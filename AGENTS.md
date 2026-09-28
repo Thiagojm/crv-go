@@ -24,4 +24,4 @@ The spec and plan were approved on 2026-09-28. Phase 1 is implemented in the wor
 
 ## Verified commands and limits
 
-On Windows, `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...` and `go build -o bin/crv.exe .` passed for Phase 1 on 2026-09-28 (Node 24.18.0, Go 1.26.5); use `npm.cmd` if PowerShell blocks `npm.ps1`. Do not change global execution policy. Bundled-catalog decode reported 238 eligible / 4 excluded. Prior prototype browser checks in `docs/VERIFICACAO.md` remain separate from final-app delivery evidence.
+On Windows, `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...` and `go build -o bin/crv.exe .` passed for Phase 1 on 2026-09-28 (Node 24.18.0, Go 1.26.5); use `npm.cmd` if PowerShell blocks `npm.ps1`. Do not change global execution policy. Bundled-catalog decode reported 192 eligible / 4 excluded. Prior prototype browser checks in `docs/VERIFICACAO.md` remain separate from final-app delivery evidence.

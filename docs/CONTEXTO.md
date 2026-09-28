@@ -8,7 +8,7 @@ CRV Go is a personal, local/offline desktop-browser application for recording CR
 
 **Phase 1 is implemented in the working tree and awaits user validation.** The Go executable initializes the bundled `farsight/` catalog into an OS/user data directory (or `--data-dir`), serves the embedded UI on loopback with bootstrap/CSRF protection, reports catalog readiness, and supports orderly shutdown. Real sessions remain disabled until Phase 2. The standalone historical prototype remains at `crv_prototipo.html`.
 
-The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation on this Windows checkout: **238 eligible** unique images, **4 exclusions** (inventory images without a single-image source), with inventory summary counts **multi=2 / empty=1** preserved from the catalog `summary`/`reviewEntries`. Display assets are metadata-free PNGs under the managed revision directory. Installation inserts an inactive revision, finalizes files, verifies them, then activates; `EnsureInstalled` reuses a verified revision even if the distribution `farsight/` folder is later absent. Unknown `/api/*` routes return 404. The source `farsight/` tree is not modified by installation.
+The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation and deduplication on this Windows checkout: **192 eligible** unique images, **4 exclusions** (inventory images without a single-image source), with inventory summary counts **multi=2 / empty=1** preserved from the catalog `summary`/`reviewEntries`. Display assets are metadata-free PNGs under the managed revision directory. Installation inserts an inactive revision, finalizes files, verifies them, then activates; `EnsureInstalled` reuses a verified revision even if the distribution `farsight/` folder is later absent. Unknown `/api/*` routes return 404. The source `farsight/` tree is not modified by installation.
 
 ## Approved sources and authorization
 
@@ -23,7 +23,7 @@ The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `
 | `go vet ./...` | clean |
 | `go test ./...` | pass (`internal/store`, `internal/catalog`, `internal/app`) |
 | `go build -o bin/crv.exe .` | OK (~17 MB) |
-| Bundled catalog test | eligible=238, excluded=4 (logged; not hard-coded) |
+| Bundled catalog test | eligible=192, excluded=4 (logged; not hard-coded) |
 | Isolated launch + API | ready=true, sessionsOpen=false, Host/Origin/CSRF denials OK, `/farsight/` 404 |
 | Second instance lock | refused with existing URL/pid |
 | Restart same data dir | readiness persisted, single `rev-1` |

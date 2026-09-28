@@ -43,7 +43,7 @@ Verificação realizada em Chromium no ambiente Linux de execução. Compatibili
 
 Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...`, `go build -o bin/crv.exe .`.
 
-- Catálogo bundled decodificado: **238 elegíveis**, **4 exclusões** (imagens sem fonte única); relatório preserva summary **multi=2 / empty=1**, provenance e `source_url`.
+- Catálogo bundled decodificado: **192 elegíveis**, **4 exclusões** (imagens sem fonte única); após remoção de duplicatas/semelhantes; relatório preserva summary **multi=2 / empty=1**, provenance e `source_url`.
 - Correções pós-revisão: ativação só após arquivos verificados; retomada sem pasta `farsight/` se a revisão estiver íntegra; rejeição de formato/hashes duplicados/links em ancestrais; `/api/*` inexistente → 404.
 - Testes HTTP: Host/Origin rejeitados, bootstrap/CSRF obrigatórios, rotas `/farsight/` e `/images/` em 404, `sessionsOpen=false`.
 - Trava de instância: segunda execução no mesmo `--data-dir` falha e reporta a URL existente.
