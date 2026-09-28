@@ -4,7 +4,7 @@ Atualizado em 27/09/2026. Resumo de continuidade, não transcrição literal da 
 
 ## Publicação do código
 
-Em 27/09/2026, o usuário solicitou criar um repositório Git e publicar este projeto como público no GitHub. A pasta ainda não tinha histórico Git nem remoto. O conteúdo preparado para publicação é somente este pacote de código, documentação, capturas e imagens demonstrativas; o acervo privado `archive/farsight` não está presente e não deve ser adicionado. A publicação remota deve ser concluída após revisão final do conteúdo. Isso não significa que o aplicativo esteja pronto para uso experimental ou que será hospedado como serviço.
+Em 27/09/2026, foi criado o repositório público https://github.com/Thiagojm/crv-go e enviado o branch `main`. O commit inicial (`dfac150`) contém o código, a documentação, capturas e imagens demonstrativas; o acervo privado `archive/farsight` não foi incluído. Isso publica o código e o protótipo, mas não significa que o aplicativo esteja pronto para uso experimental ou que será hospedado como serviço.
 
 ## Intenção do usuário
 

@@ -2,6 +2,8 @@
 
 Pasta de destino: `C:\Projetos\crv-go`. Comece por `AGENTS.md`, `docs/CONTEXTO.md` e `docs/ABRIR_NO_CODEX.md`.
 
+Repositório público: https://github.com/Thiagojm/crv-go
+
 Este pacote reúne o protótipo, código-fonte, design, capturas, decisões e pendências. O backend Go ainda será implementado.
 
 # CRV — protótipo navegável

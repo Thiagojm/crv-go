@@ -1,10 +1,10 @@
 # Próximos passos
 
-## 1. Publicar o código-fonte
+## 1. Publicar o código-fonte (concluído em 27/09/2026)
 
-- Revisar o conteúdo versionado e confirmar que nenhum dado privado do SRV foi incluído.
-- Criar o repositório público `Thiagojm/crv-go` no GitHub e enviar o histórico Git local.
-- Registrar o endereço remoto e o estado da publicação em `docs/CONTEXTO.md` e `README.md`.
+- [x] Revisar o conteúdo versionado; nenhum dado privado do SRV foi incluído.
+- [x] Criar o repositório público `Thiagojm/crv-go` e enviar o branch `main`.
+- [x] Registrar o endereço remoto e o estado da publicação em `docs/CONTEXTO.md` e `README.md`.
 - Esta etapa publica o código e o protótipo; não hospeda o aplicativo nem o torna apto para uso experimental.
 
 ## 2. Preparar e conferir localmente
