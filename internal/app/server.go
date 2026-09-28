@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/Thiagojm/crv-go/internal/catalog"
+	"github.com/Thiagojm/crv-go/internal/session"
 	"github.com/Thiagojm/crv-go/internal/store"
 	"github.com/go-chi/chi/v5"
 )
@@ -22,6 +23,7 @@ import (
 type Server struct {
 	Store      *store.Store
 	Security   *Security
+	Sessions   *session.Service
 	UI         fs.FS
 	CatalogDir string
 	Port       int
@@ -30,10 +32,11 @@ type Server struct {
 	InitError  string
 	OnListen   func(port int, url string)
 
-	mu       sync.Mutex
-	httpSrv  *http.Server
-	shutdown chan struct{}
-	once     sync.Once
+	mu        sync.Mutex
+	httpSrv   *http.Server
+	shutdown  chan struct{}
+	once      sync.Once
+	pauseOnce sync.Once
 }
 
 type readinessDTO struct {
@@ -48,6 +51,11 @@ type readinessDTO struct {
 }
 
 func (s *Server) Handler() http.Handler {
+	s.pauseOnce.Do(func() {
+		if s.Store != nil {
+			_ = s.Store.PauseNonterminal()
+		}
+	})
 	r := chi.NewRouter()
 	r.Use(s.securityMiddleware)
 	r.Get("/api/bootstrap", s.handleBootstrap)
@@ -55,6 +63,7 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/catalog/summary", s.requireAuth(s.handleCatalogSummary))
 	r.Get("/api/settings", s.requireAuth(s.handleSettings))
 	r.Post("/api/shutdown", s.requireAuthMutating(s.handleShutdown))
+	s.mountSessionRoutes(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -124,7 +133,18 @@ func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, s.readiness())
+	dto := s.readiness()
+	writeJSON(w, map[string]any{
+		"ready":         dto.Ready,
+		"phase":         dto.Phase,
+		"sessionsOpen":  dto.SessionsOpen,
+		"eligibleCount": dto.EligibleCount,
+		"excludedCount": dto.ExcludedCount,
+		"catalogLabel":  dto.CatalogLabel,
+		"error":         dto.Error,
+		"message":       dto.Message,
+		"csrf":          s.Security.CSRFToken(),
+	})
 }
 
 func (s *Server) handleCatalogSummary(w http.ResponseWriter, r *http.Request) {
@@ -136,18 +156,21 @@ func (s *Server) handleCatalogSummary(w http.ResponseWriter, r *http.Request) {
 		"catalogLabel":  dto.CatalogLabel,
 		"error":         dto.Error,
 		"exclusions":    truncateExclusions(s.Report.Exclusions, 50),
-		"sessionsOpen":  false,
-		"phase":         "1",
+		"sessionsOpen":  s.sessionsOpen(),
+		"phase":         "2",
 	})
 }
 
 func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, map[string]any{
-		"theme":         "system",
-		"catalog":       s.readiness(),
-		"sessionsOpen":  false,
-		"phase":         "1",
-		"message":       "Sessões reais abrem na Fase 2. Tema e catálogo estão disponíveis.",
+		"theme":            "system",
+		"durationMinutes":  10,
+		"catalog":          s.readiness(),
+		"sessionsOpen":     s.sessionsOpen(),
+		"phase":            "2",
+		"historyAvailable": false,
+		"exportsAvailable": false,
+		"message":          "Sessões cegas estão ativas. Histórico, estatísticas e exportações chegam nas fases seguintes.",
 	})
 }
 
@@ -161,8 +184,12 @@ func (s *Server) handleShutdown(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (s *Server) sessionsOpen() bool {
+	return s.Ready && s.Report.EligibleCount >= 4
+}
+
 func (s *Server) readiness() readinessDTO {
-	msg := "Catálogo pronto. Sessões reais ainda não estão disponíveis (Fase 2)."
+	msg := "Catálogo pronto. Você pode iniciar uma sessão."
 	if !s.Ready {
 		msg = "Catálogo não está pronto. Use reparo/importação quando disponível."
 		if s.InitError != "" {
@@ -171,8 +198,8 @@ func (s *Server) readiness() readinessDTO {
 	}
 	return readinessDTO{
 		Ready:         s.Ready,
-		Phase:         "1",
-		SessionsOpen:  false,
+		Phase:         "2",
+		SessionsOpen:  s.sessionsOpen(),
 		EligibleCount: s.Report.EligibleCount,
 		ExcludedCount: s.Report.ExcludedCount,
 		CatalogLabel:  s.Report.SourceLabel,

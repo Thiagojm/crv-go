@@ -6,39 +6,36 @@ Updated: 2026-09-28. This file records the current checkout and execution state.
 
 CRV Go is a personal, local/offline desktop-browser application for recording CRV-inspired stages I–III and choosing one image among four after a blinded record. It is independent of Thiagojm/SRV. The intended application runs on Windows and Linux with Go + Chi, Svelte/TypeScript/Vite/Tailwind, Canvas 2D and SQLite. No account or synchronization is planned.
 
-**Phase 1 is implemented in the working tree and awaits user validation.** The Go executable initializes the bundled `farsight/` catalog into an OS/user data directory (or `--data-dir`), serves the embedded UI on loopback with bootstrap/CSRF protection, reports catalog readiness, and supports orderly shutdown. Real sessions remain disabled until Phase 2. The standalone historical prototype remains at `crv_prototipo.html`.
+**Phase 2 is implemented in the working tree and awaits user validation.** The Go executable initializes the bundled `farsight/` catalog, serves the UI on loopback, and runs a persisted blinded session: create → collect stages I–III → lock → choose A–D → feedback/comment, with autosave, pause/resume, abandonment, revision conflicts and a per-tab editing lease. Real history, statistics, catalog replacement and exports remain Phase 3–4. The standalone historical prototype remains at `crv_prototipo.html`.
 
-The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation and deduplication on this Windows checkout: **192 eligible** unique images, **4 exclusions** (inventory images without a single-image source), with inventory summary counts **multi=2 / empty=1** preserved from the catalog `summary`/`reviewEntries`. Display assets are metadata-free PNGs under the managed revision directory. Installation inserts an inactive revision, finalizes files, verifies them, then activates; `EnsureInstalled` reuses a verified revision even if the distribution `farsight/` folder is later absent. Unknown `/api/*` routes return 404. The source `farsight/` tree is not modified by installation.
+The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation and deduplication on this Windows checkout: **192 eligible** unique images, **4 exclusions**, inventory summary **multi=2 / empty=1**. Display assets are metadata-free PNGs under the managed revision directory. Unknown `/api/*` routes return 404. Target identity and source hashes are absent from collection and locked-choice API responses; images are served only as opaque session-position URLs after lock.
 
 ## Approved sources and authorization
 
-The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `docs/plans/2026-09-28-crv-offline-plan.md` on 2026-09-28. Planning artifacts were committed/pushed as `a48ebc6`. The user then authorized **Phase 1 only**, with a stop at the user-validation gate. That request does **not** authorize commits, pushes, Phase 2, signing or publication.
+The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `docs/plans/2026-09-28-crv-offline-plan.md` on 2026-09-28. Planning artifacts were committed/pushed as `a48ebc6`. Phase 1 was authorized and implemented, then the user authorized **Phase 2**. That request does **not** authorize commits, pushes, Phase 3, signing or publication.
 
-## Verification evidence (Phase 1, Windows)
+## Verification evidence (Phase 2, Windows)
 
 | Check | Result |
 | --- | --- |
 | `npm.cmd run check` | 0 errors / 0 warnings |
 | `npm.cmd run build` | `dist/index.html` single-file build OK |
 | `go vet ./...` | clean |
-| `go test ./...` | pass (`internal/store`, `internal/catalog`, `internal/app`) |
-| `go build -o bin/crv.exe .` | OK (~17 MB) |
-| Bundled catalog test | eligible=192, excluded=4 (logged; not hard-coded) |
-| Isolated launch + API | ready=true, sessionsOpen=false, Host/Origin/CSRF denials OK, `/farsight/` 404 |
-| Second instance lock | refused with existing URL/pid |
-| Restart same data dir | readiness persisted, single `rev-1` |
-| Missing catalog dir | ready=false, clear error, no empty demo bank |
-| Browser (Playwright) | catalog banner, Nova sessão disabled, theme/settings/help/history, Salvar e encerrar |
+| `go test ./...` | pass (`internal/store`, `internal/catalog`, `internal/session`, `internal/app`) |
+| `npm.cmd run test:e2e` | 3 passed (fluxo cego, recarga/pausa/segunda aba, abandono + encerrar) |
+| `go build -o bin/crv.exe .` | OK |
 
-Dependencies pinned and license-checked at install: Chi `v5.3.2` (MIT), `modernc.org/sqlite v1.59.0` (BSD + SQLite public domain), `golang.org/x/sys v0.47.0` (BSD). Module: `github.com/Thiagojm/crv-go`, Go 1.26.5, Node 24.18.0.
+Go tests cover uniform four-distinct assignment, repeated sessions on a 4-image bank, create idempotency, random-failure rollback, record validation, lock/confirm/abandon state machine, timing without revision bump, lease transfer, API blinding, guessed image 404, concurrent create, stale revision, failed save without unlocking images, and restart-pause.
+
+Dependencies: Chi `v5.3.2` (MIT), `modernc.org/sqlite v1.59.0`, `golang.org/x/sys v0.47.0`, Playwright `1.63.0` (dev). Module: `github.com/Thiagojm/crv-go`, Go 1.26.5, Node 24.18.0.
 
 ## Limitations (still unverified or out of phase)
 
-- Linux runtime, offline network inspection of a packaged distribution, and automatic browser-open failure UX were not re-checked as final delivery evidence (A1 complete remains Phase 5).
-- No session create/lock/choice, no image API, no history/statistics/export/backup (Phases 2–4).
-- Interactive user mouse validation of this Phase-1 shell is the current gate.
+- Linux runtime, offline packaged distribution, and automatic browser-open failure UX remain Phase 5.
+- History list, continuous statistics, catalog replacement (Phase 3); PDF/CSV/ZIP (Phase 4).
+- Interactive user mouse validation of this Phase-2 session is the current gate.
 - Working tree changes are **uncommitted**; do not commit/push without a separate request.
 
 ## Next authorization boundary
 
-Stop here for user testing of Phase 1. Start Phase 2 only after explicit user approval. See `docs/PROXIMOS_PASSOS.md`.
+Stop here for user testing of Phase 2. Start Phase 3 only after explicit user approval. See `docs/PROXIMOS_PASSOS.md`.

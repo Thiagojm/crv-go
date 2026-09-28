@@ -100,8 +100,8 @@ func TestAuthCSRFAndNoStaticBank(t *testing.T) {
 	}
 	var ready map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &ready)
-	if ready["sessionsOpen"] != false {
-		t.Fatal("sessions must be closed in phase 1")
+	if ready["phase"] != "2" {
+		t.Fatalf("phase: %v", ready["phase"])
 	}
 
 	req = httptest.NewRequest(http.MethodPost, "/api/shutdown", nil)

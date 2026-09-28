@@ -1,6 +1,6 @@
 # CRV Go — projeto e contexto de continuidade
 
-Checkout: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano](docs/plans/2026-09-28-crv-offline-plan.md). A **Fase 1** (lançamento offline + catálogo) está no working tree à espera de validação do usuário; sessões reais são Fase 2.
+Checkout: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano](docs/plans/2026-09-28-crv-offline-plan.md). A **Fase 2** (sessão cega persistida) está no working tree à espera de validação do usuário; histórico e estatísticas são Fase 3.
 
 Repositório público: https://github.com/Thiagojm/crv-go
 
@@ -45,13 +45,13 @@ O mesmo HTML está em `dist/index.html`. Use sempre o mesmo arquivo e navegador 
 
 **Não é a versão experimental nem o aplicativo final.** As mesmas quatro fotografias se repetem e a identidade do alvo está no frontend/armazenamento do navegador. Não use os resultados para inferir acurácia de RV.
 
-A Fase 1 do executável Go já valida o banco `farsight/`, serve a UI em loopback e encerra o servidor; sessões cegas, estatísticas contínuas, PDF e backup ZIP ainda não existem (Fases 2–4). A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
+A Fase 2 do executável Go persiste uma sessão cega (coleta → bloqueio → escolha → feedback) no SQLite local; estatísticas contínuas, PDF e backup ZIP ainda não existem (Fases 3–4). A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
 
 O fechamento inesperado pode perder dados ainda não gravados. O controle local é próprio de protótipo e não impede inspeção deliberada nem edição pelo desenvolvedor do navegador. A restauração JSON aceita apenas o formato deste protótipo.
 
 Nenhuma alteração foi feita no repositório SRV. O catálogo unificado e as imagens agora estão versionados em `farsight/` por decisão do usuário; o protótipo continua usando somente as quatro fotos demonstrativas.
 
-## Aplicativo local (Fase 1)
+## Aplicativo local (Fase 2)
 
 Requisitos de desenvolvimento: Node 24+, Go 1.26+, npm. No PowerShell use `npm.cmd` se `npm` for bloqueado.
 
@@ -69,7 +69,7 @@ Execução isolada para testes (não usa o diretório de dados do usuário):
 bin\crv.exe --data-dir tmp-data\demo --catalog-dir farsight --no-browser
 ```
 
-Abra a URL impressa (inclui `#bootstrap=…`). Nova sessão permanece desabilitada até a Fase 2. `Salvar e encerrar` pede o shutdown do servidor. Uma segunda instância no mesmo `--data-dir` é recusada.
+Abra a URL impressa (inclui `#bootstrap=…`). Use **Nova sessão** para o fluxo cego. Histórico e estatísticas permanecem na Fase 3. `Salvar e encerrar` pede o shutdown do servidor. Uma segunda instância no mesmo `--data-dir` é recusada.
 
 Sem flags, o executável resolve `farsight/` ao lado do binário e grava dados em `%AppData%\CRV-Go` (Windows) / diretório de config do usuário.
 
@@ -77,7 +77,7 @@ O protótipo histórico continua em `crv_prototipo.html` (abre no navegador sem 
 
 ### Organização
 
-- `src/App.svelte`: navegação e coordenação da demonstração.
+- `src/App.svelte`: navegação e coordenação da sessão local.
 - `src/components/DrawingPad.svelte`: canvas e ferramentas.
 - `src/components/FieldGroup.svelte`: atributos e texto livre.
 - `src/components/Record.svelte`: registro somente leitura.

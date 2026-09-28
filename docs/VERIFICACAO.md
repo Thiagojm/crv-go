@@ -51,5 +51,16 @@ Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.
 - Banco ausente: `ready=false` com mensagem de reparo.
 - Navegador (Playwright nesta sessão): banner de prontidão, Nova sessão desabilitada, tema, Configurações com contagens, Conhecer o fluxo, Histórico vazio honesto, Salvar e encerrar encerra o processo.
 
-Não verificado nesta fase: empacotamento offline completo, Linux runtime, abertura automática do navegador quando `rundll32` falha (apenas log da URL), sessões reais.
+Não verificado nesta fase: empacotamento offline completo, Linux runtime, abertura automática do navegador quando `rundll32` falha (apenas log da URL). Sessões reais: ver Fase 2 abaixo.
+
+## Fase 2 — sessão cega persistida (2026-09-28, Windows)
+
+Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...`, `npm.cmd run test:e2e`.
+
+- Criação sorteia alvo + 3 distratores distintos com `crypto/rand` antes de devolver o código; retries com o mesmo `operationId` reutilizam a sessão; um banco de 4 imagens permite sessões sucessivas.
+- DTOs de coleta/escolha não incluem hash, caminho nem créditos; `/api/sessions/{id}/images/{A-D}` responde 404 antes do bloqueio e após abandono anterior às alternativas.
+- Lock, escolha tentada, confirmação (idempotente / conflito se outra letra), abandono e comentário pós-feedback são transições no servidor com revisão. Tempo não incrementa a revisão. Lease 15 s / heartbeat 5 s; retomada após recarga fica pausada.
+- Playwright (Chromium, 1280×720): desenho, checkbox, texto, ajuda, bloqueio, escolha, feedback; recarga pausa e preserva “Sólido”; segunda aba mostra Assumir; abandono e Salvar e encerrar.
+
+Não verificado nesta fase: histórico/estatísticas (Fase 3), PDF/CSV/ZIP (Fase 4), empacotamento Linux/Windows (Fase 5), validação manual do usuário com mouse.
 

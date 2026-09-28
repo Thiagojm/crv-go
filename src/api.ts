@@ -1,3 +1,5 @@
+import type {RecordData} from './data';
+
 export type Readiness = {
   ready: boolean;
   phase: string;
@@ -10,47 +12,274 @@ export type Readiness = {
 };
 
 export type CatalogSummary = Readiness & {
-  exclusions?: { sha256?: string; path?: string; reason: string }[];
+  exclusions?: {sha256?: string; path?: string; reason: string}[];
 };
 
-let csrf = '';
+export type Alternative = {position: string; url: string};
+export type Feedback = {
+  position: string;
+  label: string;
+  description: string;
+  credit: string;
+  sam?: unknown;
+  sources?: {id: string; pool: string; label: string; description: string; credit: string}[];
+};
 
-function headers(mutating = false): HeadersInit {
-  const h: Record<string, string> = { Accept: 'application/json' };
+export type SessionDTO = {
+  id: string;
+  code: string;
+  state: 'collecting' | 'locked' | 'completed' | 'abandoned';
+  revision: number;
+  paused: boolean;
+  youHoldLease: boolean;
+  step: number;
+  collectionMs: number;
+  choiceMs: number;
+  timingSeq: number;
+  helpVersion: string;
+  record: RecordData;
+  alternatives?: Alternative[];
+  tentativeChoice?: string | null;
+  tentativeConfidence?: number | null;
+  choice?: string | null;
+  correct?: string | null;
+  hit?: boolean;
+  feedback?: Feedback;
+  comment?: string;
+  abandonedAfterAlts?: boolean;
+  createdAt: string;
+};
+
+type Envelope = {session: SessionDTO | null; leaseToken?: string; error?: string; message?: string};
+
+let csrf = '';
+let lease = '';
+const LEASE_KEY = 'crv-lease';
+const CSRF_KEY = 'crv-csrf';
+
+function setCsrf(token: string) {
+  if (!token) return;
+  csrf = token;
+  sessionStorage.setItem(CSRF_KEY, token);
+}
+
+export function currentLease(): string {
+  return lease;
+}
+
+export function restoreLease(): void {
+  lease = sessionStorage.getItem(LEASE_KEY) || '';
+  csrf = sessionStorage.getItem(CSRF_KEY) || csrf;
+}
+
+function headers(mutating = false): Record<string, string> {
+  const h: Record<string, string> = {Accept: 'application/json'};
   if (mutating) h['X-CSRF-Token'] = csrf;
+  if (lease) h['X-Lease-Token'] = lease;
   return h;
+}
+
+async function parse<T>(res: Response): Promise<T> {
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const msg = (body as Envelope).message || (body as Envelope).error || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return body as T;
 }
 
 export async function bootstrapFromHash(): Promise<boolean> {
   const hash = location.hash.startsWith('#') ? location.hash.slice(1) : location.hash;
-  const params = new URLSearchParams(hash);
-  const token = params.get('bootstrap');
+  const token = new URLSearchParams(hash).get('bootstrap');
   if (!token) return false;
   history.replaceState(null, '', location.pathname + location.search);
-  const res = await fetch(`/api/bootstrap?token=${encodeURIComponent(token)}`, { credentials: 'same-origin' });
+  const res = await fetch(`/api/bootstrap?token=${encodeURIComponent(token)}`, {credentials: 'same-origin'});
   if (!res.ok) return false;
   const body = await res.json();
-  csrf = body.csrf || '';
+  setCsrf(body.csrf || '');
   return !!csrf;
 }
 
 export async function getReady(): Promise<Readiness | null> {
-  const res = await fetch('/api/ready', { credentials: 'same-origin', headers: headers() });
+  const res = await fetch('/api/ready', {credentials: 'same-origin', headers: headers()});
   if (!res.ok) return null;
-  return res.json();
+  const body = await res.json();
+  if (body.csrf) setCsrf(body.csrf);
+  return body;
 }
 
 export async function getCatalogSummary(): Promise<CatalogSummary | null> {
-  const res = await fetch('/api/catalog/summary', { credentials: 'same-origin', headers: headers() });
+  const res = await fetch('/api/catalog/summary', {credentials: 'same-origin', headers: headers()});
   if (!res.ok) return null;
   return res.json();
 }
 
 export async function shutdown(): Promise<boolean> {
-  const res = await fetch('/api/shutdown', {
+  const res = await fetch('/api/shutdown', {method: 'POST', credentials: 'same-origin', headers: headers(true)});
+  return res.ok;
+}
+
+function takeLease(env: Envelope): SessionDTO | null {
+  if (env.leaseToken) {
+    lease = env.leaseToken;
+    sessionStorage.setItem(LEASE_KEY, lease);
+  }
+  if (env.session && (env.session.state === 'completed' || env.session.state === 'abandoned')) {
+    sessionStorage.removeItem(LEASE_KEY);
+  }
+  return env.session;
+}
+
+export async function createSession(operationId: string, disposition: string, concentration: string): Promise<SessionDTO> {
+  const res = await fetch('/api/sessions', {
     method: 'POST',
     credentials: 'same-origin',
-    headers: headers(true),
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({operationId, disposition, concentration}),
   });
-  return res.ok;
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao criar sessão');
+  return s;
+}
+
+export async function getCurrent(): Promise<SessionDTO | null> {
+  const res = await fetch('/api/sessions/current', {credentials: 'same-origin', headers: headers()});
+  const env = await parse<Envelope>(res);
+  return env.session;
+}
+
+export async function saveRecord(id: string, expectedRevision: number, record: RecordData): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/record`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({expectedRevision, record}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao salvar');
+  return s;
+}
+
+export async function lockSession(id: string, expectedRevision: number): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/lock`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({expectedRevision}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao bloquear');
+  return s;
+}
+
+export async function tentativeChoice(id: string, expectedRevision: number, choice: string, confidence: number | null): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/choice`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({expectedRevision, choice, confidence}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao registrar escolha');
+  return s;
+}
+
+export async function confirmChoice(id: string, expectedRevision: number, choice: string, confidence: number | null): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/confirm`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({expectedRevision, choice, confidence}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao confirmar');
+  return s;
+}
+
+export async function abandonSession(id: string, expectedRevision: number): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/abandon`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({expectedRevision}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao abandonar');
+  return s;
+}
+
+export async function saveComment(id: string, comment: string): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/comment`, {
+    method: 'PUT',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({comment}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao comentar');
+  return s;
+}
+
+export async function heartbeat(id: string, transfer = false): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/lease`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({token: lease, transfer}),
+  });
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha no lease');
+  return s;
+}
+
+export async function sendTiming(id: string, seq: number, deltaMs: number): Promise<{collectionMs: number; choiceMs: number; timingSeq: number}> {
+  const res = await fetch(`/api/sessions/${id}/timing`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({seq, deltaMs}),
+  });
+  return parse(res);
+}
+
+export async function pauseSession(id: string): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/pause`, {method: 'POST', credentials: 'same-origin', headers: headers(true)});
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao pausar');
+  return s;
+}
+
+export async function resumeSession(id: string): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${id}/resume`, {method: 'POST', credentials: 'same-origin', headers: headers(true)});
+  const env = await parse<Envelope>(res);
+  const s = takeLease(env);
+  if (!s) throw new Error('falha ao retomar');
+  return s;
+}
+
+export async function recordExample(id: string, step: number): Promise<void> {
+  await fetch(`/api/sessions/${id}/example`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({step}),
+  });
+}
+
+export async function recordLoaded(id: string, positions: string[]): Promise<void> {
+  await fetch(`/api/sessions/${id}/loaded`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({positions}),
+  });
 }
