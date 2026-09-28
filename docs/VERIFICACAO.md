@@ -37,4 +37,19 @@ O resultado mantém a direção do conceito com essas adaptações funcionais do
 
 ## Limites
 
-Verificação realizada em Chromium no ambiente Linux de execução. Compatibilidade com Windows, Firefox e diferentes políticas de armazenamento de arquivos locais ainda requer teste no dispositivo do usuário. PDFs, SQLite, importação do banco e estatística confirmatória não foram implementados nem testados nesta entrega.
+Verificação realizada em Chromium no ambiente Linux de execução. Compatibilidade com Windows, Firefox e diferentes políticas de armazenamento de arquivos locais ainda requer teste no dispositivo do usuário. A seção seguinte registra a Fase 1 do aplicativo Go; sessões cegas, PDF e backup ZIP ainda não existem.
+
+## Fase 1 — servidor local e catálogo (2026-09-28, Windows)
+
+Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...`, `go build -o bin/crv.exe .`.
+
+- Catálogo bundled decodificado: **238 elegíveis**, **4 exclusões** (imagens sem fonte única); relatório preserva summary **multi=2 / empty=1**, provenance e `source_url`.
+- Correções pós-revisão: ativação só após arquivos verificados; retomada sem pasta `farsight/` se a revisão estiver íntegra; rejeição de formato/hashes duplicados/links em ancestrais; `/api/*` inexistente → 404.
+- Testes HTTP: Host/Origin rejeitados, bootstrap/CSRF obrigatórios, rotas `/farsight/` e `/images/` em 404, `sessionsOpen=false`.
+- Trava de instância: segunda execução no mesmo `--data-dir` falha e reporta a URL existente.
+- Reinício reutiliza a revisão ativa sem duplicar nem alterar `farsight/`.
+- Banco ausente: `ready=false` com mensagem de reparo.
+- Navegador (Playwright nesta sessão): banner de prontidão, Nova sessão desabilitada, tema, Configurações com contagens, Conhecer o fluxo, Histórico vazio honesto, Salvar e encerrar encerra o processo.
+
+Não verificado nesta fase: empacotamento offline completo, Linux runtime, abertura automática do navegador quando `rundll32` falha (apenas log da URL), sessões reais.
+

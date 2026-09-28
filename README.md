@@ -1,10 +1,10 @@
 # CRV Go — projeto e contexto de continuidade
 
-Checkout conferido neste ambiente: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano de implementação](docs/plans/2026-09-28-crv-offline-plan.md). A implementação ainda não começou.
+Checkout: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano](docs/plans/2026-09-28-crv-offline-plan.md). A **Fase 1** (lançamento offline + catálogo) está no working tree à espera de validação do usuário; sessões reais são Fase 2.
 
 Repositório público: https://github.com/Thiagojm/crv-go
 
-Este pacote reúne o protótipo, código-fonte, design, capturas, decisões e pendências. O backend Go ainda será implementado.
+Este pacote reúne o protótipo histórico, o código Go da Fase 1, design, capturas e decisões.
 
 # CRV — protótipo navegável
 
@@ -45,24 +45,35 @@ O mesmo HTML está em `dist/index.html`. Use sempre o mesmo arquivo e navegador 
 
 **Não é a versão experimental nem o aplicativo final.** As mesmas quatro fotografias se repetem e a identidade do alvo está no frontend/armazenamento do navegador. Não use os resultados para inferir acurácia de RV.
 
-Ainda não implementados: backend Go + Chi, SQLite, integração real do banco incluído em `farsight/`, cegamento no servidor, estatísticas contínuas, exportação PDF e backup ZIP do aplicativo final. A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. O botão de encerramento nesta versão apenas mostra uma tela final; não existe servidor Go a desligar.
+A Fase 1 do executável Go já valida o banco `farsight/`, serve a UI em loopback e encerra o servidor; sessões cegas, estatísticas contínuas, PDF e backup ZIP ainda não existem (Fases 2–4). A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
 
 O fechamento inesperado pode perder dados ainda não gravados. O controle local é próprio de protótipo e não impede inspeção deliberada nem edição pelo desenvolvedor do navegador. A restauração JSON aceita apenas o formato deste protótipo.
 
 Nenhuma alteração foi feita no repositório SRV. O catálogo unificado e as imagens agora estão versionados em `farsight/` por decisão do usuário; o protótipo continua usando somente as quatro fotos demonstrativas.
 
-## Desenvolvimento
+## Aplicativo local (Fase 1)
 
-Requisitos: Node.js 22.12+ ou 24 e npm. A versão utilizada na verificação foi Node 24.19.0.
+Requisitos de desenvolvimento: Node 24+, Go 1.26+, npm. No PowerShell use `npm.cmd` se `npm` for bloqueado.
 
 ```sh
-npm ci
-npm run dev
-npm run check
-npm run build
+npm.cmd ci
+npm.cmd run check
+npm.cmd run build
+go test ./...
+go build -o bin/crv.exe .
 ```
 
-O build gera `dist/index.html` autocontido. Frontend Svelte + TypeScript, Vite, Tailwind e CSS de componentes. A fonte Inter Variable é embutida para consistência offline. O backend planejado continua Go + Chi + SQLite.
+Execução isolada para testes (não usa o diretório de dados do usuário):
+
+```sh
+bin\crv.exe --data-dir tmp-data\demo --catalog-dir farsight --no-browser
+```
+
+Abra a URL impressa (inclui `#bootstrap=…`). Nova sessão permanece desabilitada até a Fase 2. `Salvar e encerrar` pede o shutdown do servidor. Uma segunda instância no mesmo `--data-dir` é recusada.
+
+Sem flags, o executável resolve `farsight/` ao lado do binário e grava dados em `%AppData%\CRV-Go` (Windows) / diretório de config do usuário.
+
+O protótipo histórico continua em `crv_prototipo.html` (abre no navegador sem Go). O build Vite gera `dist/index.html`, embutido pelo `main.go`.
 
 ### Organização
 

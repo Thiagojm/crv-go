@@ -35,12 +35,14 @@ export const help=[
  {goal:'Escolher a imagem mais compatível com seu registro.',how:'Leia o registro completo e examine as quatro alternativas. A seleção pode mudar até clicar em Confirmar escolha.',example:'Se uma imagem combina com uma cor, mas contradiz seu desenho, considere as duas informações.',care:'Não reinterprete o registro para ajustá-lo à imagem. Sua escolha ficará definitiva após a confirmação.'},
  {goal:'Comparar e registrar uma reflexão posterior.',how:'Confira a escolha e o alvo correto. Escreva o que observou no comentário pós-feedback, sem mudar o original.',example:'Anote correspondências e divergências específicas, preservando o que escreveu antes.',care:'Um acerto isolado não demonstra desempenho acima do acaso. Este protótipo não gera evidência experimental.'}
 ];
+/** Prototype-only demo photos. The real bank is served by Go from farsight/; never import that folder here. */
 export const demoTargets=[
  {image:image0,name:'Paisagem de montanha',description:'Fotografia de paisagem com relevo, água e construções. Imagem demonstrativa; não pertence ao banco SRV.',credit:'Unsplash · photo-1470770841072-f978cf4d019e'},
  {image:image1,name:'Oceano',description:'Fotografia marítima com ondas e horizonte. Imagem demonstrativa; não pertence ao banco SRV.',credit:'Unsplash · photo-1518837695005-2083093ee35b'},
  {image:image2,name:'Floresta',description:'Fotografia de vegetação e árvores. Imagem demonstrativa; não pertence ao banco SRV.',credit:'Unsplash · photo-1441974231531-c6227db76b6e'},
  {image:image3,name:'Arquitetura',description:'Fotografia de uma estrutura arquitetônica. Imagem demonstrativa; não pertence ao banco SRV.',credit:'Unsplash · photo-1511818966892-d7d671e672a2'}
 ];
+export const phase1SessionMessage='Sessões reais com cegamento no servidor abrem na Fase 2.';
 export type Point={x:number;y:number};
 export type Stroke={points:Point[];width:number};
 export type Session={id:string;code:string;step:number;status:'active'|'locked'|'done'|'abandoned';mode:string;created:string;seconds:number;choiceSeconds:number;record:Record<string,string[]>;notes:Record<string,string>;drawings:Record<string,Stroke[]>;summary:string[];confidence:string;choiceConfidence:string;selected:number|null;target:number;order:number[];attributes:boolean;comment:string;openedExamples:number[]};

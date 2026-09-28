@@ -7,11 +7,12 @@ Updated: 2026-09-28. The approved implementation plan is `docs/plans/2026-09-28-
 - [x] Frontend prototype and its historical Linux Chromium review delivered; the visual direction is the baseline for targeted changes.
 - [x] Three source pools consolidated into the Git-tracked `farsight/` catalog and 242 images, preserving source records and credits. Final decoding/eligibility is not yet verified.
 - [x] New offline design explicitly approved on 2026-09-28; phased implementation plan written.
+- [x] Phase 1 implemented in the working tree: Go launch, SQLite catalog install, loopback protection, readiness UI, shutdown. Automated Windows checks passed; see `docs/CONTEXTO.md`.
 
 ## Current boundary
 
-- [ ] Wait for a separate user request to start Phase 1. No product implementation is authorized by the planning approval or this documentation handoff.
-- [ ] On Phase-1 authorization, follow only the approved plan's offline startup and bundled catalog scope. Validate catalog decoding, safe paths, hashes, actual eligibility, loopback access, startup/shutdown, and the partial Windows evidence specified there. Stop for user testing and explicit Phase-2 approval.
+- [ ] **User validation of Phase 1** (isolated data dir, readiness without image previews, second-instance lock, missing-bank message, Salvar e encerrar). No commit/push unless separately requested.
+- [ ] After acceptance, explicit authorization required before Phase 2 (blinded persisted sessions).
 - [ ] At every phase gate, report what passed, what remains unverified, how to test, and update `docs/CONTEXTO.md` and this file. Preserve unrelated work and keep commit/push separate from phase authorization.
 
 ## Later phases (not yet authorized)
@@ -23,4 +24,4 @@ Updated: 2026-09-28. The approved implementation plan is `docs/plans/2026-09-28-
 
 ## Deferred and out of scope
 
-Native Windows drawing/navigation checks of the historical prototype, Firefox behavior, and real Linux execution remain unverified until relevant phase testing. No SRV edits, old-session migration, accounts/sync, mobile app, AI interpretation, stages IV–VI, fixed blocks, release signing or publication are included in the approved implementation phases.
+Native full-session drawing on Windows, Firefox behavior, and real Linux execution remain unverified until relevant phase testing. No SRV edits, old-session migration, accounts/sync, mobile app, AI interpretation, stages IV–VI, fixed blocks, release signing or publication are included in the approved implementation phases.

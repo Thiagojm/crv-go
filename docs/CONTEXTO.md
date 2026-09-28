@@ -6,18 +6,39 @@ Updated: 2026-09-28. This file records the current checkout and execution state.
 
 CRV Go is a personal, local/offline desktop-browser application for recording CRV-inspired stages I–III and choosing one image among four after a blinded record. It is independent of Thiagojm/SRV. The intended application runs on Windows and Linux with Go + Chi, Svelte/TypeScript/Vite/Tailwind, Canvas 2D and SQLite. No account or synchronization is planned.
 
-The repository currently has a navigable Svelte prototype in `src/`, `crv_prototipo.html` and `dist/index.html`. It includes mouse drawing, optional fields, help, review, choice, feedback and demo localStorage history. The answer and four repeated Unsplash photos are frontend-visible. There is no Go module/server, SQLite database, effective blinding, real bank integration, final-app PDF or ZIP backup. The prototype must not be used as an experimental application.
+**Phase 1 is implemented in the working tree and awaits user validation.** The Go executable initializes the bundled `farsight/` catalog into an OS/user data directory (or `--data-dir`), serves the embedded UI on loopback with bootstrap/CSRF protection, reports catalog readiness, and supports orderly shutdown. Real sessions remain disabled until Phase 2. The standalone historical prototype remains at `crv_prototipo.html`.
 
-The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. Git tracks the catalog and 242 image files on `main`/`origin/main`; this replaces the former private-package-only distribution rule. The catalog retains provenance and credits from three pools: 714 source records, 715 references and 242 distinct SHA-256 file hashes. There are 238 distinct images referenced by a single-image source record, two multi-image source entries and one empty entry. Decoding and final eligibility have not been validated. Historical manifest names are provenance, not files to recreate. Do not treat source-entry count as unique-image count.
+The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation on this Windows checkout: **238 eligible** unique images, **4 exclusions** (inventory images without a single-image source), with inventory summary counts **multi=2 / empty=1** preserved from the catalog `summary`/`reviewEntries`. Display assets are metadata-free PNGs under the managed revision directory. Installation inserts an inactive revision, finalizes files, verifies them, then activates; `EnsureInstalled` reuses a verified revision even if the distribution `farsight/` folder is later absent. Unknown `/api/*` routes return 404. The source `farsight/` tree is not modified by installation.
 
 ## Approved sources and authorization
 
-The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` on 2026-09-28. The companion `docs/plans/2026-09-28-crv-offline-plan.md` defines five independently validated phases. The older `docs/design_app_crv.md` remains authoritative only for stage fields/help referenced by the new spec; its modes, fixed blocks, reservation cycles and first-use import rule are superseded. `docs/DECISIONS.md` contains compact durable choices.
+The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `docs/plans/2026-09-28-crv-offline-plan.md` on 2026-09-28. Planning artifacts were committed/pushed as `a48ebc6`. The user then authorized **Phase 1 only**, with a stop at the user-validation gate. That request does **not** authorize commits, pushes, Phase 2, signing or publication.
 
-The user requested project-memory synchronization, a commit and push of the approved planning/memory artifacts, and an implementation handoff for another agent. The user explicitly said not to start implementation in this task. No phase of product implementation has been requested. A later implementation request starts Phase 1 only, followed by a stop for user testing; each later phase requires separate approval. The current request authorizes this planning/documentation commit and push, not product code or release actions.
+## Verification evidence (Phase 1, Windows)
 
-## Verification and remaining work
+| Check | Result |
+| --- | --- |
+| `npm.cmd run check` | 0 errors / 0 warnings |
+| `npm.cmd run build` | `dist/index.html` single-file build OK |
+| `go vet ./...` | clean |
+| `go test ./...` | pass (`internal/store`, `internal/catalog`, `internal/app`) |
+| `go build -o bin/crv.exe .` | OK (~17 MB) |
+| Bundled catalog test | eligible=238, excluded=4 (logged; not hard-coded) |
+| Isolated launch + API | ready=true, sessionsOpen=false, Host/Origin/CSRF denials OK, `/farsight/` 404 |
+| Second instance lock | refused with existing URL/pid |
+| Restart same data dir | readiness persisted, single `rev-1` |
+| Missing catalog dir | ready=false, clear error, no empty demo bank |
+| Browser (Playwright) | catalog banner, Nova sessão disabled, theme/settings/help/history, Salvar e encerrar |
 
-On this Windows checkout, `npm.cmd ci`, `npm.cmd run check` (0 errors/warnings) and `npm.cmd run build` passed on 2026-09-28 with Node 24.18.0. Go 1.26.5 is available, but no Go code/tests exist. The built prototype HTML was restored to its tracked version after verification. Interactive drawing/navigation on Windows and real application execution on Linux were not checked in this review. `docs/VERIFICACAO.md` records older Linux Chromium tests of the prototype only.
+Dependencies pinned and license-checked at install: Chi `v5.3.2` (MIT), `modernc.org/sqlite v1.59.0` (BSD + SQLite public domain), `golang.org/x/sys v0.47.0` (BSD). Module: `github.com/Thiagojm/crv-go`, Go 1.26.5, Node 24.18.0.
 
-Next action is an explicit Phase-1 implementation request from the user, then the first validation gate in the approved plan. See `docs/PROXIMOS_PASSOS.md` for the live task list. No final-app tests, offline distribution or experimental safeguards have been implemented yet.
+## Limitations (still unverified or out of phase)
+
+- Linux runtime, offline network inspection of a packaged distribution, and automatic browser-open failure UX were not re-checked as final delivery evidence (A1 complete remains Phase 5).
+- No session create/lock/choice, no image API, no history/statistics/export/backup (Phases 2–4).
+- Interactive user mouse validation of this Phase-1 shell is the current gate.
+- Working tree changes are **uncommitted**; do not commit/push without a separate request.
+
+## Next authorization boundary
+
+Stop here for user testing of Phase 1. Start Phase 2 only after explicit user approval. See `docs/PROXIMOS_PASSOS.md`.

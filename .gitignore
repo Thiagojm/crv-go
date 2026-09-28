@@ -14,3 +14,7 @@ Thumbs.db
 *.db
 *.db-*
 /bin/
+/tmp-data/
+*.exe
+/catalog-staging/
+.playwright-mcp/
