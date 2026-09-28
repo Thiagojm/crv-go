@@ -1,6 +1,6 @@
 # CRV Go — projeto e contexto de continuidade
 
-Pasta de destino: `C:\Projetos\crv-go`. Comece por `AGENTS.md`, `docs/CONTEXTO.md` e `docs/ABRIR_NO_CODEX.md`.
+Checkout conferido neste ambiente: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano de implementação](docs/plans/2026-09-28-crv-offline-plan.md). A implementação ainda não começou.
 
 Repositório público: https://github.com/Thiagojm/crv-go
 
@@ -45,11 +45,11 @@ O mesmo HTML está em `dist/index.html`. Use sempre o mesmo arquivo e navegador 
 
 **Não é a versão experimental nem o aplicativo final.** As mesmas quatro fotografias se repetem e a identidade do alvo está no frontend/armazenamento do navegador. Não use os resultados para inferir acurácia de RV.
 
-Ainda não implementados: backend Go + Chi, SQLite, importação do banco SRV, cegamento no servidor, controle de exposição e não repetição, blocos de avaliação, teste binomial, exportação PDF e backup ZIP do aplicativo final. O botão de encerramento nesta versão salva os dados e mostra uma tela final; não existe servidor Go a desligar.
+Ainda não implementados: backend Go + Chi, SQLite, integração real do banco incluído em `farsight/`, cegamento no servidor, estatísticas contínuas, exportação PDF e backup ZIP do aplicativo final. A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. O botão de encerramento nesta versão apenas mostra uma tela final; não existe servidor Go a desligar.
 
 O fechamento inesperado pode perder dados ainda não gravados. O controle local é próprio de protótipo e não impede inspeção deliberada nem edição pelo desenvolvedor do navegador. A restauração JSON aceita apenas o formato deste protótipo.
 
-Nenhuma alteração foi feita no repositório SRV. O banco privado não foi incluído nem publicado.
+Nenhuma alteração foi feita no repositório SRV. O catálogo unificado e as imagens agora estão versionados em `farsight/` por decisão do usuário; o protótipo continua usando somente as quatro fotos demonstrativas.
 
 ## Desenvolvimento
 

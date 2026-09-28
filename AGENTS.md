@@ -1,33 +1,27 @@
-# CRV Go — instruções para continuidade
+# CRV Go — instructions for future agents
 
-## Leia antes de trabalhar
+## Read before editing
 
-1. `docs/CONTEXTO.md`: decisões da conversa e estado real da entrega.
-2. `docs/design_app_crv.md`: especificação funcional aprovada.
-3. `docs/PROXIMOS_PASSOS.md`: pendências e sequência sugerida.
-4. `README.md` e `docs/VERIFICACAO.md`: execução e verificações anteriores.
+1. `docs/CONTEXTO.md` for the verified current state and approval boundary.
+2. `docs/specs/2026-09-28-crv-offline-design.md` for the approved product contract.
+3. `docs/plans/2026-09-28-crv-offline-plan.md` for the five implementation phases and their validation gates.
+4. `docs/DECISIONS.md` for durable decisions; `docs/PROXIMOS_PASSOS.md` for active work.
+5. `docs/design_app_crv.md` only for the stage fields/help explicitly retained by the approved spec. It is otherwise historical. `README.md` and `docs/VERIFICACAO.md` describe the prototype and earlier checks.
 
-## Regras do projeto
+The spec and plan were approved on 2026-09-28. No implementation phase has been requested yet. A future implementation request starts Phase 1 only; stop after its user validation gate. Later phases need separate authorization. Never infer permission to commit, push, sign or publish from phase approval.
 
-- Responda em português. Preserve decisões já tomadas; resolva detalhes rotineiros sem reabrir a discussão da stack.
-- Este é um aplicativo novo, separado de Thiagojm/SRV. Não alterar aquele repositório nem recriar sua interface. O usuário não gostou do app SRV.
-- Stack final: Go + Chi, Svelte + TypeScript + Vite, Tailwind, Canvas 2D e SQLite. Windows e Linux, local/offline, históricos independentes, mouse.
-- O código atual é apenas um protótipo frontend. Não há backend Go, SQLite, importação real ou cegamento efetivo. Não apresentar a demonstração como aplicativo experimental pronto.
-- Campos opcionais, checkboxes e texto livre, ajuda contextual e exemplos recolhidos fazem parte dos requisitos aprovados.
-- No produto final: sortear alvo antes da coleta; guardar segredo no backend; bloquear registro antes das quatro alternativas; persistir escolha antes do feedback. Nunca adaptar distratores ao conteúdo da sessão.
-- Preservar desenhos, hipóteses/AOL, versões do protocolo, estados, abandonos e feedback separado. Não reconstruir o original a partir de comentários posteriores.
-- Banco de estudo originado de `archive/farsight` em https://github.com/Thiagojm/SRV, agora presente em `src/assets/farsight/`. Em 28/09/2026 o usuário decidiu manter imagens e catálogo no Git, substituindo a restrição anterior de versionamento. Preservar créditos. Isso não autoriza commit/push automaticamente nem decide embutir imagens no frontend ou executável; a integração por pacote local continua sendo a referência até revisão do design.
-- Não confundir 714 entradas dos três pools com 714 imagens únicas. Importador precisa tratar sobreposição e imagens iguais. Começar pelo pool A.
-- O aspecto visual foi proposto e entregue para teste, mas não houve aprovação explícita posterior da aparência. Não alegar aprovação pixel a pixel.
-- Atualize `docs/CONTEXTO.md` e `docs/PROXIMOS_PASSOS.md` ao concluir etapas materiais.
+## Project rules
 
-## Comandos existentes
+- Reply to the user in Portuguese. Preserve approved decisions and resolve routine details without reopening the stack.
+- This is a separate application from Thiagojm/SRV. Do not edit that repository or recreate its interface.
+- Target stack: Go + Chi, Svelte + TypeScript + Vite + Tailwind, Canvas 2D and SQLite; local/offline on Windows and Linux, with independent histories and mouse drawing.
+- The checkout still contains only a frontend prototype. There is no Go backend, SQLite storage, effective blinding, real session import or final-app export. Do not present prototype results as experimental data.
+- Keep all perceptual fields optional, with multiple checkboxes and free text; preserve contextual help, collapsed fictional examples, drawings, AOL, protocol versions, abandonment and separate post-feedback comments.
+- Assign the target and three distinct distractors before collection; keep the answer in the backend. Lock the original record before alternatives; persist the choice before feedback. Never select distractors based on session content.
+- The bank is tracked at `farsight/` and will ship with the app. Preserve credits. Do not place target images or the answer catalog in the frontend bundle. There is one session mode, continuous descriptive statistics, no blocks/reservations, and every eligible image remains available for each new session.
+- The existing visual design is the baseline for targeted changes, not pixel-level approval.
+- At each material phase boundary, update `docs/CONTEXTO.md` and `docs/PROXIMOS_PASSOS.md` with actual evidence and the next authorization boundary.
 
-- `npm ci`
-- `npm run dev`
-- `npm run check`
-- `npm run build`
+## Verified commands and limits
 
-Em PowerShell, `npm.cmd` é alternativa se a política de execução bloquear `npm.ps1`. Não mudar políticas globais para isso.
-
-Não há comando de testes Go ou suíte E2E versionada neste pacote ainda. O relatório registra a verificação manual/automatizada feita no ambiente anterior, não uma garantia de que foi repetida aqui. Introduza testes necessários para os invariantes reais ao implementar o backend.
+On Windows, `npm.cmd ci`, `npm.cmd run check` and `npm.cmd run build` passed on 2026-09-28 (Node 24.18.0); use `npm.cmd` if PowerShell blocks `npm.ps1`. Do not change global execution policy. Go 1.26.5 was present, but no Go code or Go tests exist yet. Prior browser checks in `docs/VERIFICACAO.md` were on the prototype in Linux and have not been repeated here as final-app validation.

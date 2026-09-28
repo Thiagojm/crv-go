@@ -1,5 +1,7 @@
 # Aplicativo CRV — design funcional e técnico
 
+> Historical reference: the approved `docs/specs/2026-09-28-crv-offline-design.md` supersedes this document's separate modes, blocks, reservations, no-repeat cycles and mandatory first-use import. Its stage field lists and help text remain authoritative where referenced by the approved spec. The implementation plan is `docs/plans/2026-09-28-crv-offline-plan.md`; no phase has been authorized yet.
+
 Versão: 1.0  
 Data: 26/09/2026  
 Responsável pelo produto: Thiago  
