@@ -152,8 +152,8 @@ func TestValidateArchiveRejectsCorruptAndWrongFormat(t *testing.T) {
 
 	badFmt := filepath.Join(dir, "badfmt.zip")
 	if err := writeRawZip(badFmt, map[string][]byte{
-		"manifest.json": []byte(`{"format":"crv-backup-v999","createdAt":"x","files":{},"revisionIds":[],"note":""}`),
-		"crv.sqlite":    []byte("x"),
+		"manifest.json":    []byte(`{"format":"crv-backup-v999","createdAt":"x","files":{},"revisionIds":[],"note":""}`),
+		"crv.sqlite":       []byte("x"),
 		"preferences.json": []byte(`{}`),
 	}); err != nil {
 		t.Fatal(err)
@@ -593,6 +593,58 @@ func TestApplySwapPreservesOldDirWhenMoveAndUndoFail(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dataDir, "catalog")); err != nil {
 		t.Fatalf("live catalog not restored: %v", err)
+	}
+}
+
+func TestResolveInterruptedAfterPartialMoveAndFailedUndo(t *testing.T) {
+	dataDir, st, _, sessionCode := setupInstalled(t)
+	out := filepath.Join(dataDir, "backups", "partial-move.zip")
+	if err := Create(st, out); err != nil {
+		t.Fatal(err)
+	}
+	staging := DefaultStagingDir(dataDir)
+	if err := ValidateArchive(out, staging); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareSwap(dataDir, staging, out); err != nil {
+		t.Fatal(err)
+	}
+
+	calls := 0
+	moveLivePayloadFn = func(from, to string) error {
+		calls++
+		if calls == 1 {
+			if err := moveFile(filepath.Join(from, "crv.sqlite"), filepath.Join(to, "crv.sqlite")); err != nil {
+				return err
+			}
+			return fmt.Errorf("simulated failure before moving catalog")
+		}
+		return fmt.Errorf("simulated undo failure")
+	}
+	t.Cleanup(func() { moveLivePayloadFn = moveLivePayload })
+	if err := ApplySwap(dataDir, st.Close); err == nil {
+		t.Fatal("expected partial move failure")
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "catalog")); err != nil {
+		t.Fatalf("unmoved live catalog missing before recovery: %v", err)
+	}
+	if err := ResolveInterrupted(dataDir); err != nil {
+		t.Fatal(err)
+	}
+	st2, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st2.Close()
+	got, err := st2.GetSession("sess-backup-1")
+	if err != nil || got == nil || got.Code != sessionCode {
+		t.Fatalf("recovery lost session: %+v %v", got, err)
+	}
+	if _, err := os.Stat(filepath.Join(dataDir, "catalog")); err != nil {
+		t.Fatalf("recovery lost unmoved catalog: %v", err)
+	}
+	if _, err := os.Stat(MarkerPath(dataDir)); !os.IsNotExist(err) {
+		t.Fatalf("marker should be cleared after recovery, err=%v", err)
 	}
 }
 

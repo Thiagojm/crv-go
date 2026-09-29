@@ -11,6 +11,7 @@ Updated: 2026-09-28. The approved implementation plan is `docs/plans/2026-09-28-
 - [x] Phase 2 implemented, committed and pushed: blinded persisted session, server-side transitions, autosave/recovery, drawing and choice, API and Playwright tests.
 - [x] Phase 3 implemented, committed and pushed (`fed1076`): real history (pagination + comment edit), continuous statistics, optional catalog ZIP/folder replacement and in-place repair.
 - [x] Phase 4 implemented, committed and pushed (`221b923`): CSV export, printable session HTML (Exportar PDF → Salvar como PDF nativo), ZIP backup/restore with pre-restore copy and interrupted-swap recovery.
+- [x] Phase 4 follow-up: partial-move rollback preserves live catalog files when the SQLite move and undo fail; regression and full Windows checks pass. User validation remains pending.
 
 ## Current boundary
 

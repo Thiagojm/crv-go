@@ -29,10 +29,11 @@ The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `
 
 Phase 4 APIs: `GET /api/exports/csv`, `GET /api/exports/sessions/{id}/print`, `GET /api/backup`, `POST /api/backup/restore` (multipart `archive` + `confirm=true`). Backup format `crv-backup-v1` with SHA-256 manifest; restore refuses active collecting/locked sessions and creates a verified pre-restore ZIP under `backups/`. Startup calls `backup.ResolveInterrupted` before opening SQLite.
 
-Phase 4 corrections (included in `221b923`, still at user-validation gate before Phase 5):
+Phase 4 corrections (`221b923` and a follow-up rollback fix, still at user-validation gate before Phase 5):
 
 - Restore coordination: `dataMu` RWMutex in auth wrappers; shared handlers hold `RLock` for the whole request; restore/catalog/backup/create take exclusive `Lock` so in-flight work drains before swap. `maintaining` still blocks new auth. Tested with an in-flight comment held across restore.
 - `ApplySwap`: on move failure, only clears `OldDir`/marker after a successful undo; failed undo keeps `live_moved`+`OldDir` for `ResolveInterrupted`. Covered by failed-move+failed-undo test.
+- Partial-move rollback: the marker records which live payload entries existed before the swap. Recovery restores entries moved to `OldDir`, preserves old entries still live, and removes only newly created entries. A regression test moves SQLite but leaves `catalog/` live, then fails the undo; startup recovery retains both the session and catalog. After this fix, `go test ./... -count=1`, `go vet ./...`, `npm.cmd run check`, `npm.cmd run build`, `npm.cmd run test:e2e` (7 passed), and `go build -o bin/crv-rollback-review.exe .` passed on Windows.
 - `ValidateArchive`: required revision IDs come from the staged DB (active + session-referenced); a manifest that omits one is rejected. Image-path checks run for those required IDs.
 - Printable PDF: target `data:` URI typed as `template.URL` (avoids `#ZgotmplZ`); Esboço uses `drawing-block-continued` with a forced page break so heading and drawing stay together. E2E asserts `img.naturalWidth > 0`, pypdf `--min-images 1`, and pymupdf `--heading-has-drawings` for Ideograma/Esboço. Rendered PDF pages inspected under `tmp-data/phase4-pdf-evidence/`.
 - Prior hardening retained: `live_moved` before payload move; Create/Validate require referenced catalog files; backup download awaits `queue.flush()`.

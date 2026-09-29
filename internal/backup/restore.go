@@ -33,11 +33,12 @@ const (
 
 // Marker is the durable restore-control file kept outside swapped payload.
 type Marker struct {
-	Stage        string `json:"stage"`
-	PreBackup    string `json:"preBackup"`
-	Staging      string `json:"staging"`
-	OldDir       string `json:"oldDir"`
-	BackupFormat string `json:"backupFormat"`
+	Stage        string   `json:"stage"`
+	PreBackup    string   `json:"preBackup"`
+	Staging      string   `json:"staging"`
+	OldDir       string   `json:"oldDir"`
+	OldFiles     []string `json:"oldFiles,omitempty"`
+	BackupFormat string   `json:"backupFormat"`
 }
 
 // Live payload names swapped during restore (relative to dataDir).
@@ -223,6 +224,15 @@ func ApplySwap(dataDir string, stCloser func() error) error {
 	if err := os.MkdirAll(oldDir, 0o755); err != nil {
 		return err
 	}
+	m.OldFiles = nil
+	for _, name := range append(livePayloadFiles, liveCatalogDir) {
+		if _, err := os.Lstat(filepath.Join(dataDir, name)); err == nil {
+			m.OldFiles = append(m.OldFiles, name)
+		} else if !errors.Is(err, os.ErrNotExist) {
+			_ = os.RemoveAll(oldDir)
+			return err
+		}
+	}
 	// Persist live_moved + OldDir before any live payload move so an interruption
 	// cannot leave the old database aside while ResolveInterrupted still treats
 	// the marker as a pre-swap abort.
@@ -240,6 +250,7 @@ func ApplySwap(dataDir string, stCloser func() error) error {
 		_ = os.RemoveAll(oldDir)
 		m.Stage = StagePreBackup
 		m.OldDir = ""
+		m.OldFiles = nil
 		_ = writeMarker(dataDir, *m)
 		return err
 	}
@@ -294,14 +305,52 @@ func RollbackSwap(dataDir string) error {
 		return errors.New("cópia anterior ausente para rollback")
 	}
 
-	// Remove bad/partial new live payload.
-	for _, name := range livePayloadFiles {
-		_ = os.Remove(filepath.Join(dataDir, name))
+	oldFiles := make(map[string]bool, len(m.OldFiles))
+	for _, name := range m.OldFiles {
+		oldFiles[name] = true
 	}
-	_ = os.RemoveAll(filepath.Join(dataDir, liveCatalogDir))
-
-	if err := moveLivePayload(m.OldDir, dataDir); err != nil {
-		return fmt.Errorf("falha ao restaurar dados anteriores: %w", err)
+	// Older markers lack OldFiles. Preserve live entries absent from OldDir.
+	if m.OldFiles == nil {
+		for _, name := range append(livePayloadFiles, liveCatalogDir) {
+			for _, root := range []string{m.OldDir, dataDir} {
+				if _, err := os.Lstat(filepath.Join(root, name)); err == nil {
+					oldFiles[name] = true
+				} else if !errors.Is(err, os.ErrNotExist) {
+					return err
+				}
+			}
+		}
+	}
+	removeLive := func(name string) error {
+		p := filepath.Join(dataDir, name)
+		if name == liveCatalogDir {
+			return os.RemoveAll(p)
+		}
+		err := os.Remove(p)
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	for _, name := range append(livePayloadFiles, liveCatalogDir) {
+		oldPath := filepath.Join(m.OldDir, name)
+		livePath := filepath.Join(dataDir, name)
+		if _, err := os.Lstat(oldPath); err == nil {
+			if err := removeLive(name); err != nil {
+				return fmt.Errorf("falha ao remover dados parciais: %w", err)
+			}
+			if err := moveFile(oldPath, livePath); err != nil {
+				return fmt.Errorf("falha ao restaurar dados anteriores: %w", err)
+			}
+		} else if !errors.Is(err, os.ErrNotExist) {
+			return err
+		} else if !oldFiles[name] {
+			if err := removeLive(name); err != nil {
+				return fmt.Errorf("falha ao remover dados novos: %w", err)
+			}
+		} else if _, err := os.Lstat(livePath); err != nil {
+			return fmt.Errorf("dado anterior ausente (%s): %w", name, err)
+		}
 	}
 	_ = os.RemoveAll(m.OldDir)
 	if m.Staging != "" {
