@@ -8,7 +8,7 @@
 4. `docs/DECISIONS.md` for durable decisions; `docs/PROXIMOS_PASSOS.md` for active work.
 5. `docs/design_app_crv.md` only for the stage fields/help explicitly retained by the approved spec. It is otherwise historical. `README.md` and `docs/VERIFICACAO.md` describe the prototype and earlier checks.
 
-The spec and plan were approved on 2026-09-28. Phases 1–3 are on `main` (`fed1076` for Phase 3). Phase 4 is implemented in the working tree and stopped at the user-validation gate. Later phases need separate authorization. Never infer permission to commit, push, sign or publish from phase approval.
+The spec and plan were approved on 2026-09-28. Phases 1–3 are on `main` (`fed1076` for Phase 3). Phase 4 is on `main` (`221b923`) and stopped at the user-validation gate before Phase 5. Later phases need separate authorization. Never infer permission to commit, push, sign or publish from phase approval.
 
 ## Project rules
 

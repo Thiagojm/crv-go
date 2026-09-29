@@ -6,13 +6,13 @@ Updated: 2026-09-28. This file records the current checkout and execution state.
 
 CRV Go is a personal, local/offline desktop-browser application for recording CRV-inspired stages I–III and choosing one image among four after a blinded record. It is independent of Thiagojm/SRV. The intended application runs on Windows and Linux with Go + Chi, Svelte/TypeScript/Vite/Tailwind, Canvas 2D and SQLite. No account or synchronization is planned.
 
-**Phase 4 is implemented in the working tree and awaits user validation.** The Go executable initializes the bundled `farsight/` catalog, serves the UI on loopback, runs blinded persisted sessions, exposes history/statistics/catalog import+repair, CSV export, printable session HTML for native Save as PDF, and ZIP backup/restore with pre-restore copy and startup recovery for interrupted swaps. Packaged Windows/Linux distribution remains Phase 5. The standalone historical prototype remains at `crv_prototipo.html`.
+**Phase 4 is on `main` (`221b923`) and awaits user validation before Phase 5.** The Go executable initializes the bundled `farsight/` catalog, serves the UI on loopback, runs blinded persisted sessions, exposes history/statistics/catalog import+repair, CSV export, printable session HTML for native Save as PDF, and ZIP backup/restore with pre-restore copy and startup recovery for interrupted swaps. Packaged Windows/Linux distribution remains Phase 5. The standalone historical prototype remains at `crv_prototipo.html`.
 
 The source catalog is `farsight/catalog-unified.json` with `farsight/images/`. After decode validation and deduplication on this Windows checkout: **192 eligible** unique images, **4 exclusions**, inventory summary **multi=2 / empty=1**. Display assets are metadata-free PNGs under the managed revision directory. Unknown `/api/*` routes return 404. Target identity and source hashes are absent from collection, locked-choice API responses, and CSV/unconfirmed print reports; completed print views may include target image and credits. Images are served only as opaque session-position URLs after lock.
 
 ## Approved sources and authorization
 
-The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `docs/plans/2026-09-28-crv-offline-plan.md` on 2026-09-28. Phases 1–3 are committed and pushed (`fed1076` for Phase 3). The user authorized **Phase 4** (“commit and push, inicie a fase 4”) with full PDF/CSV + ZIP backup/restore. That request does **not** authorize Phase 5, signing, publication, or a Phase-4 commit/push unless asked again.
+The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `docs/plans/2026-09-28-crv-offline-plan.md` on 2026-09-28. Phases 1–3 are on `main` (`fed1076` for Phase 3). Phase 4 is on `main` (`221b923`) after an explicit commit/push request. That does **not** authorize Phase 5, signing, or publication.
 
 ## Verification evidence (Phase 4, Windows)
 
@@ -29,7 +29,7 @@ The user explicitly approved `docs/specs/2026-09-28-crv-offline-design.md` and `
 
 Phase 4 APIs: `GET /api/exports/csv`, `GET /api/exports/sessions/{id}/print`, `GET /api/backup`, `POST /api/backup/restore` (multipart `archive` + `confirm=true`). Backup format `crv-backup-v1` with SHA-256 manifest; restore refuses active collecting/locked sessions and creates a verified pre-restore ZIP under `backups/`. Startup calls `backup.ResolveInterrupted` before opening SQLite.
 
-Phase 4 corrections (same working tree, still at user-validation gate):
+Phase 4 corrections (included in `221b923`, still at user-validation gate before Phase 5):
 
 - Restore coordination: `dataMu` RWMutex in auth wrappers; shared handlers hold `RLock` for the whole request; restore/catalog/backup/create take exclusive `Lock` so in-flight work drains before swap. `maintaining` still blocks new auth. Tested with an in-flight comment held across restore.
 - `ApplySwap`: on move failure, only clears `OldDir`/marker after a successful undo; failed undo keeps `live_moved`+`OldDir` for `ResolveInterrupted`. Covered by failed-move+failed-undo test.
@@ -44,7 +44,7 @@ Dependencies unchanged: Chi `v5.3.2` (MIT), `modernc.org/sqlite v1.59.0`, `golan
 - Linux runtime and offline packaged distribution remain Phase 5.
 - Native browser “Save as PDF” dialog remains a separate manual check; automated evidence uses Chromium headless `page.pdf()` plus `tests/inspect_pdf.py` (pypdf) on disposable artifacts under `tmp-data/phase4-pdf-evidence/` (gitignored).
 - `go test -race` was not executed here because the toolchain has `CGO_ENABLED=0`; re-run on a host with CGO/gcc before claiming race coverage.
-- Working tree Phase-4 changes are **uncommitted** until a separate request.
+- Phase 5, signing, and publication still need a separate explicit request.
 
 ## Next authorization boundary
 
