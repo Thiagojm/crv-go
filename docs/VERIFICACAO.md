@@ -62,5 +62,15 @@ Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.
 - Lock, escolha tentada, confirmação (idempotente / conflito se outra letra), abandono e comentário pós-feedback são transições no servidor com revisão. Tempo não incrementa a revisão. Lease 15 s / heartbeat 5 s; retomada após recarga fica pausada.
 - Playwright (Chromium, 1280×720): desenho, checkbox, texto, ajuda, bloqueio, escolha, feedback; recarga pausa e preserva “Sólido”; segunda aba mostra Assumir; abandono e Salvar e encerrar.
 
-Não verificado nesta fase: histórico/estatísticas (Fase 3), PDF/CSV/ZIP (Fase 4), empacotamento Linux/Windows (Fase 5), validação manual do usuário com mouse.
+## Fase 3 — histórico, estatísticas e catálogo (2026-09-28, Windows)
+
+Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...`, `npm.cmd run test:e2e` (5 testes), `go build -o bin/crv.exe .`.
+
+- `GET /api/history` e `GET /api/statistics`: lista newest-first com filtros de estado/data; totais cumulativos independentes dos filtros; `hitRate` ausente sem escolhas confirmadas; gráfico com referência 0,25·n.
+- Exemplo A9 no store: 1 acerto + 1 erro + 1 abandono → 2 escolhas, 1 acerto, 50%.
+- Import ZIP/pasta e reparo: 409 com sessão ativa; ZIP corrompido/travessia rejeitados; revisão antiga permanece no disco.
+- UI: Histórico (lista + detalhe com Record/feedback), Estatísticas (faixa + SVG + tabela), Configurações (Importar ZIP, pasta absoluta, Reparar). Assets demo removidos do frontend; `dist` sem banco.
+- Browser MCP: fluxo vazio → 1 sessão concluída na lista/detalhe; estatísticas 0/1; import visível; viewport 390×844.
+
+Não verificado nesta fase: PDF/CSV/ZIP backup (Fase 4), empacotamento Linux/Windows (Fase 5), validação manual do usuário com mouse na instalação real.
 

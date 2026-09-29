@@ -33,6 +33,7 @@ type Server struct {
 	OnListen   func(port int, url string)
 
 	mu        sync.Mutex
+	catalogMu sync.Mutex
 	httpSrv   *http.Server
 	shutdown  chan struct{}
 	once      sync.Once
@@ -63,7 +64,9 @@ func (s *Server) Handler() http.Handler {
 	r.Get("/api/catalog/summary", s.requireAuth(s.handleCatalogSummary))
 	r.Get("/api/settings", s.requireAuth(s.handleSettings))
 	r.Post("/api/shutdown", s.requireAuthMutating(s.handleShutdown))
+	s.mountCatalogRoutes(r)
 	s.mountSessionRoutes(r)
+	s.mountHistoryRoutes(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -150,14 +153,19 @@ func (s *Server) handleReady(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCatalogSummary(w http.ResponseWriter, r *http.Request) {
 	dto := s.readiness()
 	writeJSON(w, map[string]any{
-		"ready":         dto.Ready,
-		"eligibleCount": dto.EligibleCount,
-		"excludedCount": dto.ExcludedCount,
-		"catalogLabel":  dto.CatalogLabel,
-		"error":         dto.Error,
-		"exclusions":    truncateExclusions(s.Report.Exclusions, 50),
-		"sessionsOpen":  s.sessionsOpen(),
-		"phase":         "2",
+		"ready":             dto.Ready,
+		"eligibleCount":     dto.EligibleCount,
+		"excludedCount":     dto.ExcludedCount,
+		"catalogLabel":      dto.CatalogLabel,
+		"sourceLabel":       s.Report.SourceLabel,
+		"inventoryImages":   s.Report.InventoryImages,
+		"multiImageSources": s.Report.MultiImageSources,
+		"emptySources":      s.Report.EmptySources,
+		"error":             dto.Error,
+		"exclusions":        truncateExclusions(s.Report.Exclusions, 50),
+		"sessionsOpen":      s.sessionsOpen(),
+		"report":            s.Report,
+		"phase":             "3",
 	})
 }
 
@@ -167,10 +175,10 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		"durationMinutes":  10,
 		"catalog":          s.readiness(),
 		"sessionsOpen":     s.sessionsOpen(),
-		"phase":            "2",
-		"historyAvailable": false,
+		"phase":            "3",
+		"historyAvailable": true,
 		"exportsAvailable": false,
-		"message":          "Sessões cegas estão ativas. Histórico, estatísticas e exportações chegam nas fases seguintes.",
+		"message":          "Histórico e estatísticas contínuas estão disponíveis. Exportações e cópia de segurança chegam na fase seguinte.",
 	})
 }
 
@@ -189,7 +197,7 @@ func (s *Server) sessionsOpen() bool {
 }
 
 func (s *Server) readiness() readinessDTO {
-	msg := "Catálogo pronto. Você pode iniciar uma sessão."
+	msg := "Catálogo pronto. Histórico e estatísticas contínuas estão disponíveis."
 	if !s.Ready {
 		msg = "Catálogo não está pronto. Use reparo/importação quando disponível."
 		if s.InitError != "" {
@@ -198,7 +206,7 @@ func (s *Server) readiness() readinessDTO {
 	}
 	return readinessDTO{
 		Ready:         s.Ready,
-		Phase:         "2",
+		Phase:         "3",
 		SessionsOpen:  s.sessionsOpen(),
 		EligibleCount: s.Report.EligibleCount,
 		ExcludedCount: s.Report.ExcludedCount,

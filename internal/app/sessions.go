@@ -109,6 +109,8 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	if err := readJSON(w, r, &in); err != nil {
 		return
 	}
+	s.catalogMu.Lock()
+	defer s.catalogMu.Unlock()
 	row, lease, err := s.svc().Create(session.CreateInput{
 		OperationID: in.OperationID, Disposition: in.Disposition, Concentration: in.Concentration,
 	})

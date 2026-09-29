@@ -118,6 +118,14 @@ func EnsureInstalled(st *store.Store, catalogDir string) (*InstallResult, error)
 			fillCountsFromSummary(&report)
 			return &InstallResult{RevisionID: active.RevisionID, Report: report}, nil
 		}
+		// Prefer in-place repair so session-referenced revisions keep the same id.
+		if catalogDir != "" {
+			if _, statErr := os.Stat(catalogDir); statErr == nil {
+				if res, rerr := Repair(st, catalogDir); rerr == nil && res.Report.Ready {
+					return res, nil
+				}
+			}
+		}
 		// Broken activation (e.g. DB commit without files): drop it and reinstall if possible.
 		_ = st.DeactivateRevision(active.RevisionID)
 	}
@@ -136,7 +144,221 @@ func EnsureInstalled(st *store.Store, catalogDir string) (*InstallResult, error)
 	return Install(st, catalogDir)
 }
 
+// Repair restores missing original/display files into existing revision directories
+// from a matching catalog source (same SHA-256 identities). It never deactivates a
+// revision or allocates a new revision id, so historical session assignments keep working.
+func Repair(st *store.Store, catalogDir string) (*InstallResult, error) {
+	if catalogDir == "" {
+		return &InstallResult{Report: Report{Error: "diretório do banco não configurado", Ready: false}}, errors.New("diretório do banco não configurado")
+	}
+	catalogDir = filepath.Clean(catalogDir)
+	if _, err := os.Stat(catalogDir); err != nil {
+		return &InstallResult{Report: Report{Error: "banco de distribuição ausente ou ilegível", Ready: false}}, fmt.Errorf("read catalog: %w", err)
+	}
+	sources, err := loadSourceFilesBySHA(catalogDir)
+	if err != nil {
+		return &InstallResult{Report: Report{Error: err.Error(), Ready: false}}, err
+	}
+
+	ids, err := st.AllRevisionIDs()
+	if err != nil {
+		return nil, err
+	}
+	active, err := st.ActiveCatalog()
+	if err != nil {
+		return nil, err
+	}
+
+	var firstErr error
+	for _, id := range ids {
+		if err := verifyRevisionFiles(st, id); err == nil {
+			continue
+		}
+		if err := repairRevisionFiles(st, id, sources); err != nil {
+			if firstErr == nil {
+				firstErr = err
+			}
+			if active != nil && active.RevisionID == id {
+				msg := "não foi possível recompor a revisão ativa a partir da fonte correspondente"
+				return &InstallResult{RevisionID: id, Report: Report{Error: msg, Ready: false, SourceLabel: active.SourceLabel}}, errors.New(msg)
+			}
+		}
+	}
+
+	if active == nil {
+		msg := "nenhuma revisão ativa para reparar"
+		return &InstallResult{Report: Report{Error: msg, Ready: false}}, errors.New(msg)
+	}
+	if err := verifyRevisionFiles(st, active.RevisionID); err != nil {
+		msg := "revisão ativa ainda incompleta após o reparo"
+		if firstErr != nil {
+			msg = firstErr.Error()
+		}
+		return &InstallResult{RevisionID: active.RevisionID, Report: Report{Error: msg, Ready: false, SourceLabel: active.SourceLabel}}, errors.New(msg)
+	}
+
+	var report Report
+	_ = json.Unmarshal([]byte(active.ReportJSON), &report)
+	report.Ready = true
+	report.Error = ""
+	report.EligibleCount = active.EligibleCount
+	report.ExcludedCount = active.ExcludedCount
+	report.SourceLabel = active.SourceLabel
+	fillCountsFromSummary(&report)
+	return &InstallResult{RevisionID: active.RevisionID, Report: report}, nil
+}
+
+func loadSourceFilesBySHA(catalogDir string) (map[string]string, error) {
+	raw, err := os.ReadFile(filepath.Join(catalogDir, "catalog-unified.json"))
+	if err != nil {
+		return nil, errors.New("banco incluído ausente ou ilegível")
+	}
+	var inv Inventory
+	if err := json.Unmarshal(raw, &inv); err != nil {
+		return nil, errors.New("catálogo malformado")
+	}
+	if inv.Format != expectedFormat {
+		return nil, errors.New("formato de catálogo não suportado")
+	}
+	out := map[string]string{}
+	for _, img := range inv.Images {
+		h := strings.ToLower(img.SHA256)
+		if !isHexSHA256(h) {
+			continue
+		}
+		if _, ok := out[h]; ok {
+			continue
+		}
+		for _, rel := range inventoryRelPaths(img) {
+			if err := assertSafeRelPath(rel); err != nil {
+				continue
+			}
+			abs := filepath.Join(catalogDir, filepath.FromSlash(rel))
+			if err := assertNoSymlinkAncestors(catalogDir, abs); err != nil {
+				continue
+			}
+			sum, err := hashFileSHA256(abs)
+			if err != nil || !strings.EqualFold(sum, h) {
+				continue
+			}
+			out[h] = abs
+			break
+		}
+	}
+	return out, nil
+}
+
+func inventoryRelPaths(img InventoryImage) []string {
+	seen := map[string]bool{}
+	var list []string
+	add := func(p string) {
+		p = filepath.ToSlash(p)
+		if p == "" || seen[p] {
+			return
+		}
+		seen[p] = true
+		list = append(list, p)
+	}
+	for _, p := range img.Paths {
+		add(p)
+	}
+	for _, s := range img.Sources {
+		for _, im := range s.Images {
+			add(im.LocalPath)
+		}
+	}
+	sort.Strings(list)
+	return list
+}
+
+func hashFileSHA256(path string) (string, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+	h := sha256.New()
+	if _, err := io.Copy(h, io.LimitReader(f, maxImageBytes+1)); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+func repairRevisionFiles(st *store.Store, revisionID int64, sources map[string]string) error {
+	images, err := st.RevisionImages(revisionID)
+	if err != nil {
+		return err
+	}
+	if len(images) < minEligible {
+		return fmt.Errorf("revisão com poucas imagens: %d", len(images))
+	}
+	root := store.RevisionDir(st.DataDir, revisionID)
+	if err := os.MkdirAll(filepath.Join(root, "originals"), 0o755); err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Join(root, "display"), 0o755); err != nil {
+		return err
+	}
+	for _, img := range images {
+		origPath := filepath.Join(root, filepath.FromSlash(img.OriginalRelpath))
+		dispPath := filepath.Join(root, filepath.FromSlash(img.DisplayRelpath))
+		needOrig := !regularNonEmptyFile(origPath)
+		needDisp := !regularNonEmptyFile(dispPath)
+		if !needOrig && !needDisp {
+			continue
+		}
+		if needOrig {
+			src, ok := sources[strings.ToLower(img.SHA256)]
+			if !ok {
+				return fmt.Errorf("fonte correspondente ausente para %s", img.SHA256)
+			}
+			if err := copyFile(src, origPath); err != nil {
+				return err
+			}
+		}
+		if needDisp {
+			srcPath := origPath
+			if !regularNonEmptyFile(srcPath) {
+				src, ok := sources[strings.ToLower(img.SHA256)]
+				if !ok {
+					return fmt.Errorf("fonte correspondente ausente para %s", img.SHA256)
+				}
+				srcPath = src
+			}
+			f, err := os.Open(srcPath)
+			if err != nil {
+				return err
+			}
+			decoded, _, err := image.Decode(io.LimitReader(f, maxImageBytes))
+			_ = f.Close()
+			if err != nil {
+				return fmt.Errorf("decodificação da imagem falhou: %s", img.SHA256)
+			}
+			if err := writePNG(dispPath, decoded); err != nil {
+				return err
+			}
+		}
+	}
+	return verifyRevisionFiles(st, revisionID)
+}
+
+func regularNonEmptyFile(path string) bool {
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() || info.Size() <= 0 {
+		return false
+	}
+	return true
+}
+
 func Install(st *store.Store, catalogDir string) (*InstallResult, error) {
+	return InstallLabeled(st, catalogDir, "bundled")
+}
+
+// InstallLabeled validates and activates a catalog directory with an explicit source label.
+func InstallLabeled(st *store.Store, catalogDir, label string) (*InstallResult, error) {
+	if label == "" {
+		label = "bundled"
+	}
 	catalogDir = filepath.Clean(catalogDir)
 	invPath := filepath.Join(catalogDir, "catalog-unified.json")
 	raw, err := os.ReadFile(invPath)
@@ -156,7 +378,7 @@ func Install(st *store.Store, catalogDir string) (*InstallResult, error) {
 	}
 
 	report := Report{
-		SourceLabel:     "bundled",
+		SourceLabel:     label,
 		InventoryImages: len(inv.Images),
 		Summary:         inv.Summary,
 		Provenance:      inv.Provenance,

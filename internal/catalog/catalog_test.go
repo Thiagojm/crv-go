@@ -284,6 +284,133 @@ func TestEnsureInstalledWithoutDistributionDir(t *testing.T) {
 	}
 }
 
+func TestRepairRestoresSameRevision(t *testing.T) {
+	root := t.TempDir()
+	cat := filepath.Join(root, "farsight")
+	if _, err := WriteSynthetic(cat, 4); err != nil {
+		t.Fatal(err)
+	}
+	dataDir := filepath.Join(root, "data")
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	res, err := Install(st, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	revDir := store.RevisionDir(dataDir, res.RevisionID)
+	imgs, err := st.RevisionImages(res.RevisionID)
+	if err != nil || len(imgs) == 0 {
+		t.Fatal(err)
+	}
+	missing := filepath.Join(revDir, filepath.FromSlash(imgs[0].DisplayRelpath))
+	if err := os.Remove(missing); err != nil {
+		t.Fatal(err)
+	}
+	if err := verifyRevisionFiles(st, res.RevisionID); err == nil {
+		t.Fatal("expected broken revision before repair")
+	}
+
+	repaired, err := Repair(st, cat)
+	if err != nil {
+		t.Fatalf("repair: %v", err)
+	}
+	if repaired.RevisionID != res.RevisionID {
+		t.Fatalf("repair changed revision id %d -> %d", res.RevisionID, repaired.RevisionID)
+	}
+	if !repaired.Report.Ready {
+		t.Fatalf("repair not ready: %+v", repaired.Report)
+	}
+	if _, err := os.Stat(missing); err != nil {
+		t.Fatalf("display file not restored: %v", err)
+	}
+	active, err := st.ActiveCatalog()
+	if err != nil || active == nil || active.RevisionID != res.RevisionID {
+		t.Fatalf("active revision changed: %+v", active)
+	}
+}
+
+func TestRepairRejectsMismatchedSource(t *testing.T) {
+	root := t.TempDir()
+	cat := filepath.Join(root, "farsight")
+	other := filepath.Join(root, "other")
+	if _, err := WriteSynthetic(cat, 4); err != nil {
+		t.Fatal(err)
+	}
+	// Distinct salts so SHA-256 identities diverge from WriteSynthetic defaults.
+	_ = os.MkdirAll(filepath.Join(other, "images"), 0o755)
+	var images []InventoryImage
+	for i := 0; i < 4; i++ {
+		rel := fmt.Sprintf("images/o%d.jpg", i)
+		hash, err := writeJPEG(filepath.Join(other, rel), 8, 8, byte(200+i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		images = append(images, InventoryImage{
+			SHA256: hash, Paths: []string{rel},
+			Sources: []SourceRecord{{ID: fmt.Sprintf("B-%d", i), Pool: "B", Images: []SourceImage{{LocalPath: rel}}}},
+		})
+	}
+	raw, _ := json.Marshal(Inventory{Format: expectedFormat, Images: images, Summary: &InventorySummary{SingleImageCandidates: 4}})
+	_ = os.WriteFile(filepath.Join(other, "catalog-unified.json"), raw, 0o644)
+
+	dataDir := filepath.Join(root, "data")
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	res, err := Install(st, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = os.RemoveAll(store.RevisionDir(dataDir, res.RevisionID))
+
+	_, err = Repair(st, other)
+	if err == nil {
+		t.Fatal("expected mismatched source to fail")
+	}
+	active, err := st.ActiveCatalog()
+	if err != nil || active == nil || active.RevisionID != res.RevisionID {
+		t.Fatalf("repair must keep active revision: %+v err=%v", active, err)
+	}
+}
+
+func TestEnsureInstalledRepairsInPlace(t *testing.T) {
+	root := t.TempDir()
+	cat := filepath.Join(root, "farsight")
+	if _, err := WriteSynthetic(cat, 4); err != nil {
+		t.Fatal(err)
+	}
+	dataDir := filepath.Join(root, "data")
+	st, err := store.Open(dataDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+
+	res, err := Install(st, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_ = os.RemoveAll(store.RevisionDir(dataDir, res.RevisionID))
+
+	again, err := EnsureInstalled(st, cat)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.RevisionID != res.RevisionID {
+		t.Fatalf("EnsureInstalled should repair in place, got %d want %d", again.RevisionID, res.RevisionID)
+	}
+	if !again.Report.Ready {
+		t.Fatal("expected ready after in-place repair")
+	}
+}
+
 func TestAncestorSymlinkRejected(t *testing.T) {
 	root := t.TempDir()
 	cat := filepath.Join(root, "farsight")

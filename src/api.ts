@@ -149,6 +149,117 @@ export async function getCurrent(): Promise<SessionDTO | null> {
   return env.session;
 }
 
+export async function getSession(id: string): Promise<SessionDTO> {
+  const res = await fetch(`/api/sessions/${encodeURIComponent(id)}`, {credentials: 'same-origin', headers: headers()});
+  const env = await parse<Envelope>(res);
+  if (!env.session) throw new Error('sessão não encontrada');
+  return env.session;
+}
+
+export type HistoryItem = {
+  id: string;
+  code: string;
+  state: SessionDTO['state'];
+  createdAt: string;
+  collectionMs: number;
+  choiceMs: number;
+  abandonedAfterAlts?: boolean;
+  confirmedChoice?: string | null;
+  hit?: boolean | null;
+  completedAt?: string;
+  abandonedAt?: string;
+};
+
+export type HistoryPage = {items: HistoryItem[]; total: number};
+
+export async function fetchHistory(opts: {
+  states?: string[];
+  from?: string;
+  to?: string;
+  limit?: number;
+  offset?: number;
+} = {}): Promise<HistoryPage> {
+  const q = new URLSearchParams();
+  if (opts.states?.length) q.set('state', opts.states.join(','));
+  if (opts.from) q.set('from', opts.from);
+  if (opts.to) q.set('to', opts.to);
+  if (opts.limit != null) q.set('limit', String(opts.limit));
+  if (opts.offset != null) q.set('offset', String(opts.offset));
+  const res = await fetch(`/api/history?${q}`, {credentials: 'same-origin', headers: headers()});
+  return parse(res);
+}
+
+export type ChartPoint = {
+  n: number;
+  hits: number;
+  reference: number;
+  code: string;
+  completedAt: string;
+  hit: boolean;
+};
+
+export type Statistics = {
+  initiated: number;
+  active: number;
+  completed: number;
+  abandonedBefore: number;
+  abandonedAfter: number;
+  confirmedChoices: number;
+  hits: number;
+  hitRate: number | null;
+  chart: ChartPoint[];
+};
+
+export async function fetchStatistics(): Promise<Statistics> {
+  const res = await fetch('/api/statistics', {credentials: 'same-origin', headers: headers()});
+  return parse(res);
+}
+
+export type CatalogImportResult = {
+  ready: boolean;
+  revisionId?: number;
+  report?: CatalogSummary & {
+    sourceLabel?: string;
+    inventoryImages?: number;
+    multiImageSources?: number;
+    emptySources?: number;
+    error?: string;
+  };
+  error?: string;
+  message?: string;
+};
+
+export async function importCatalogFolder(path: string): Promise<CatalogImportResult> {
+  const res = await fetch('/api/catalog/import/folder', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: {...headers(true), 'Content-Type': 'application/json'},
+    body: JSON.stringify({path}),
+  });
+  return parse(res);
+}
+
+export async function importCatalogZip(file: File): Promise<CatalogImportResult> {
+  const body = new FormData();
+  body.append('archive', file);
+  const res = await fetch('/api/catalog/import/zip', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: headers(true),
+    body,
+  });
+  return parse(res);
+}
+
+export async function repairCatalog(): Promise<CatalogImportResult> {
+  const res = await fetch('/api/catalog/repair', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: headers(true),
+  });
+  return parse(res);
+}
+
 export async function saveRecord(id: string, expectedRevision: number, record: RecordData): Promise<SessionDTO> {
   const res = await fetch(`/api/sessions/${id}/record`, {
     method: 'PUT',

@@ -139,6 +139,24 @@ func (s *Store) ActiveCatalog() (*ActiveCatalog, error) {
 	return &c, nil
 }
 
+// AllRevisionIDs returns every catalog revision id, oldest first.
+func (s *Store) AllRevisionIDs() ([]int64, error) {
+	rows, err := s.DB.Query(`SELECT id FROM catalog_revisions ORDER BY id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var ids []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+	return ids, rows.Err()
+}
+
 func (s *Store) RevisionImages(revisionID int64) ([]ImageRow, error) {
 	rows, err := s.DB.Query(`SELECT sha256, original_relpath, display_relpath, width, height, bytes, COALESCE(primary_source_id, ''), sources_json
 		FROM catalog_images WHERE revision_id = ?`, revisionID)

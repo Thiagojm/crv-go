@@ -1,6 +1,6 @@
 # CRV Go — durable decisions
 
-Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them; Phase 2 is in the working tree awaiting user validation. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`.
+Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them; Phase 4 is the active authorized work. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`.
 
 ## Product and presentation — accepted
 
@@ -17,5 +17,6 @@ Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented 
 ## Delivery and execution — accepted
 
 - The approved design supersedes the older `docs/design_app_crv.md` where it describes mandatory first-use import, pool-A-only selection, two modes, fixed blocks, no-repeat cycles or Wilson/binomial block inference. Its stage fields and help remain the source for those exact lists/texts.
-- The approved plan has five phases, each ending with user validation and separate authorization for the next. Spec/plan approval does not authorize implementation, commits, pushes or release work. Phase 2 was separately authorized and is awaiting user validation; it does not authorize commit/push or Phase 3.
+- The approved plan has five phases, each ending with user validation and separate authorization for the next. Spec/plan approval does not authorize implementation, commits, pushes or release work. Phases 1–3 were authorized, implemented, committed and pushed. Phase 4 was separately authorized (full exports + backup/restore); it does not authorize Phase 5, signing or publication.
+- Catalog repair recomposes missing files in-place into existing `rev-{id}` directories from a matching `CatalogDir` by SHA-256. It must not deactivate the revision used by historical sessions or allocate a new revision id for repair.
 - Preserve server-side state transitions, crash recovery, per-installation storage and narrow loopback API access. These are required before calling a session blinded or saved. The prototype's localStorage flow does not satisfy them.

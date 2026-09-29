@@ -6,13 +6,16 @@
  import Record from './components/Record.svelte';
  import Help from './components/Help.svelte';
  import ConfirmDialog from './components/ConfirmDialog.svelte';
+ import History from './components/History.svelte';
+ import Statistics from './components/Statistics.svelte';
  import {groupsI,groupsII,stages,intro,durationMs,emptyRecord,type RecordData,type Stroke} from './data';
  import {SaveQueue,saveLabel,createOpId,clearCreateOp} from './session';
  import {
   bootstrapFromHash,getReady,getCatalogSummary,shutdown,restoreLease,
   createSession,getCurrent,saveRecord,lockSession,tentativeChoice,confirmChoice,
   abandonSession,saveComment,heartbeat,sendTiming,pauseSession,resumeSession,
-  recordExample,recordLoaded,type Readiness,type CatalogSummary,type SessionDTO
+  recordExample,recordLoaded,importCatalogZip,importCatalogFolder,repairCatalog,
+  type Readiness,type CatalogSummary,type SessionDTO
  } from './api';
 
  type Page = 'home'|'session'|'history'|'stats'|'settings'|'closed';
@@ -46,7 +49,78 @@
  let timingSeq = 0;
  let draftGen = 0;
  let lastTick = Date.now();
+ let catalogBusy = false;
+ let folderPath = '';
  const KEY = 'crv-design-prototype-v1';
+
+ async function refreshCatalog() {
+  catalogSummary = await getCatalogSummary();
+  readiness = await getReady();
+ }
+
+ async function onZipImport(ev: Event) {
+  const input = ev.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file || !appConnected) return;
+  if (active) {
+   notice = 'Substitução indisponível enquanto há sessão em andamento.';
+   return;
+  }
+  catalogBusy = true;
+  notice = 'Importando ZIP…';
+  try {
+   const res = await importCatalogZip(file);
+   await refreshCatalog();
+   notice = res.ready
+    ? `Catálogo substituído · revisão ${res.revisionId ?? '—'} · ${res.report?.eligibleCount ?? catalogSummary?.eligibleCount ?? 0} elegíveis.`
+    : (res.message || res.error || 'Importação concluída sem ativação.');
+  } catch (e) {
+   notice = e instanceof Error ? e.message : 'Falha na importação do ZIP';
+  } finally {
+   catalogBusy = false;
+  }
+ }
+
+ async function onFolderImport() {
+  if (!appConnected || !folderPath.trim()) return;
+  if (active) {
+   notice = 'Substitução indisponível enquanto há sessão em andamento.';
+   return;
+  }
+  catalogBusy = true;
+  notice = 'Importando pasta…';
+  try {
+   const res = await importCatalogFolder(folderPath.trim());
+   await refreshCatalog();
+   notice = res.ready
+    ? `Catálogo substituído · revisão ${res.revisionId ?? '—'} · ${res.report?.eligibleCount ?? catalogSummary?.eligibleCount ?? 0} elegíveis.`
+    : (res.message || res.error || 'Importação concluída sem ativação.');
+  } catch (e) {
+   notice = e instanceof Error ? e.message : 'Falha na importação da pasta';
+  } finally {
+   catalogBusy = false;
+  }
+ }
+
+ async function onRepairCatalog() {
+  if (!appConnected) return;
+  if (active) {
+   notice = 'Reparo indisponível enquanto há sessão em andamento.';
+   return;
+  }
+  catalogBusy = true;
+  notice = 'Reparando catálogo…';
+  try {
+   const res = await repairCatalog();
+   await refreshCatalog();
+   notice = res.ready ? 'Catálogo reparado e pronto.' : (res.message || res.error || 'Reparo sem ativação.');
+  } catch (e) {
+   notice = e instanceof Error ? e.message : 'Falha no reparo';
+  } finally {
+   catalogBusy = false;
+  }
+ }
 
  $: canEdit = !!current && current.state === 'collecting' && !current.paused && current.youHoldLease;
  $: step = !current ? 0 : current.state === 'locked' ? 5 : current.state === 'completed' ? 6 : current.state === 'abandoned' ? draft.step : draft.step;
@@ -317,7 +391,7 @@
 </script>
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape') { lightboxUrl = null; dialog = null; } }}/>
 <div class="app" class:dark>
-<header class="app-header"><button class="brand" onclick={() => { page = 'home'; }} aria-label="CRV — início">CRV<span class="brand-dot"></span></button><span class="header-divider"></span><span class="demo-label">{appShell ? 'Fase 2 · sessão local' : 'Protótipo de interface'}</span><div class="header-right">{#if page === 'session' && current}<span class="code">{current.code}</span><span class="timer"><Icon name="clock" size={15}/>{durationMs(current.state === 'locked' ? current.choiceMs : current.collectionMs)}</span>{#if current.state === 'collecting' || current.state === 'locked'}<button class="icon-button" onclick={togglePause} disabled={!current.youHoldLease} aria-label={current.paused ? 'Retomar cronômetro' : 'Pausar cronômetro'}><Icon name={current.paused ? 'play' : 'pause'}/></button>{/if}{/if}<button class="icon-button theme-toggle" onclick={toggleTheme} aria-label="Alternar tema"><Icon name={dark ? 'sun' : 'moon'}/></button><button class="exit-button" aria-label="Salvar e encerrar" onclick={end} disabled={shuttingDown}><Icon name="exit" size={16}/><span>{shuttingDown ? 'Encerrando…' : 'Salvar e encerrar'}</span></button></div></header>
+<header class="app-header"><button class="brand" onclick={() => { page = 'home'; }} aria-label="CRV — início">CRV<span class="brand-dot"></span></button><span class="header-divider"></span><span class="demo-label">{appShell ? 'Fase 3 · histórico local' : 'Protótipo de interface'}</span><div class="header-right">{#if page === 'session' && current}<span class="code">{current.code}</span><span class="timer"><Icon name="clock" size={15}/>{durationMs(current.state === 'locked' ? current.choiceMs : current.collectionMs)}</span>{#if current.state === 'collecting' || current.state === 'locked'}<button class="icon-button" onclick={togglePause} disabled={!current.youHoldLease} aria-label={current.paused ? 'Retomar cronômetro' : 'Pausar cronômetro'}><Icon name={current.paused ? 'play' : 'pause'}/></button>{/if}{/if}<button class="icon-button theme-toggle" onclick={toggleTheme} aria-label="Alternar tema"><Icon name={dark ? 'sun' : 'moon'}/></button><button class="exit-button" aria-label="Salvar e encerrar" onclick={end} disabled={shuttingDown}><Icon name="exit" size={16}/><span>{shuttingDown ? 'Encerrando…' : 'Salvar e encerrar'}</span></button></div></header>
 {#if page === 'closed'}
  <main class="closed-screen"><Icon name="check" size={38}/><h1>Aplicativo encerrado.</h1><p>O servidor local foi solicitado a fechar. Você pode fechar esta aba.</p></main>
 {:else if page === 'session'}
@@ -357,7 +431,7 @@
  </main>
  <footer class="session-footer"><div>{#if current && current.state === 'collecting'}<button class="secondary" onclick={() => step === 1 ? page = 'home' : go(step - 1)}><Icon name="back"/>Voltar</button><button class="text-button abandon" onclick={() => dialog = 'abandon'}>Abandonar</button>{:else}<button class="secondary" onclick={() => page = 'home'}><Icon name="back"/>Início</button>{#if current?.state === 'locked'}<button class="text-button abandon" onclick={() => dialog = 'abandon'}>Abandonar</button>{/if}{/if}</div><span class="footer-hint" role="status">{current ? storeMessage : 'Todas as respostas são opcionais'}</span>{#if !current}<button class="primary" onclick={start} disabled={!readiness?.sessionsOpen}>Iniciar <Icon name="arrow"/></button>{:else if current.state === 'abandoned'}<button class="primary" onclick={() => page = 'home'}>Início <Icon name="arrow"/></button>{:else if step < 4}<button class="primary" onclick={() => go(step + 1)}>Continuar <Icon name="arrow"/></button>{:else if step === 4}<button class="primary" onclick={() => dialog = 'lock'} disabled={!canEdit}>Finalizar registro <Icon name="lock" size={16}/></button>{:else if step === 5}<button class="primary" disabled={selected === null || !current.youHoldLease || current.paused} onclick={() => dialog = 'choice'}>Confirmar escolha <Icon name="arrow"/></button>{:else}<button class="primary" onclick={() => { clearCreateOp(); current = null; page = 'home'; }}>Nova sessão <Icon name="arrow"/></button>{/if}</footer>
 {:else}
- <div class="shell"><nav class="sidebar" aria-label="Navegação principal">{#each [['home','Início','home'],['history','Histórico','clock'],['stats','Estatísticas','chart'],['settings','Configurações','settings']] as [id, label, icon]}<button class:nav-active={page === id} onclick={() => page = id as Page}><Icon name={icon}/>{label}</button>{/each}<div class="sidebar-bottom"><button onclick={() => { helpStep = 0; tour = true; helpOpen = true; }}><Icon name="book"/>Conhecer o fluxo</button><p>CRV · Estágios I–III<br/>{appShell ? 'Fase 2 · offline local' : 'Demonstração local'}</p></div></nav>
+ <div class="shell"><nav class="sidebar" aria-label="Navegação principal">{#each [['home','Início','home'],['history','Histórico','clock'],['stats','Estatísticas','chart'],['settings','Configurações','settings']] as [id, label, icon]}<button class:nav-active={page === id} onclick={() => page = id as Page}><Icon name={icon}/>{label}</button>{/each}<div class="sidebar-bottom"><button onclick={() => { helpStep = 0; tour = true; helpOpen = true; }}><Icon name="book"/>Conhecer o fluxo</button><p>CRV · Estágios I–III<br/>{appShell ? 'Fase 3 · offline local' : 'Demonstração local'}</p></div></nav>
  <main class="dashboard">
  {#if page === 'home'}
  <div class="page-title"><div><h1>Seu espaço de prática.</h1><p>Um registro por vez, da primeira impressão ao feedback.</p></div></div>
@@ -370,17 +444,27 @@
  {#if bootError && !appConnected}<section class="inline-note" role="status">{bootError}</section>{/if}
  {#if notice}<section class="inline-note" role="status">{notice}</section>{/if}
  <section class="home-start"><div><h2>{active ? 'Seu registro espera por você.' : 'Comece com uma folha em branco.'}</h2><p>{active ? 'Retome a mesma sessão, com os desenhos e anotações preservados.' : 'Explore os três estágios com calma. As imagens só aparecem depois de finalizar seu registro.'}</p><button class="primary" onclick={prepare} disabled={!appConnected || (!readiness?.sessionsOpen && !active)} title={!appConnected ? 'Abra pelo executável' : ''}>{active ? 'Continuar sessão' : 'Nova sessão'}<Icon name="arrow"/></button></div><div class="home-flow">{#each ['Ideograma','Sensorial','Esboço'] as v, i}<div><span>0{i + 1}</span><div><h3>{v}</h3><p>{['Registre o gesto.','Descreva as qualidades.','Explore as formas.'][i]}</p></div></div>{/each}</div></section>
- <section class="home-bottom"><div><h2>Antes de experimentar</h2><p class="muted">Uma explicação curta em cada etapa. Exemplos disponíveis quando você precisar.</p><button class="secondary" onclick={() => { tour = true; helpStep = 0; helpOpen = true; }}><Icon name="book"/>Conhecer o fluxo</button></div><div class="demo-note"><h3>Fase 2 · sessão persistida</h3><p>O sorteio e as imagens ficam no servidor local. Histórico, estatísticas e exportações chegam nas fases seguintes.</p></div></section>
+ <section class="home-bottom"><div><h2>Antes de experimentar</h2><p class="muted">Uma explicação curta em cada etapa. Exemplos disponíveis quando você precisar.</p><button class="secondary" onclick={() => { tour = true; helpStep = 0; helpOpen = true; }}><Icon name="book"/>Conhecer o fluxo</button></div><div class="demo-note"><h3>Fase 3 · histórico e catálogo</h3><p>Revise sessões reais, acompanhe totais contínuos e, se quiser, substitua o banco local. Exportações chegam na fase seguinte.</p></div></section>
  {:else if page === 'history'}
- <div class="page-title"><div><h1>Histórico</h1><p>Histórico real chega na Fase 3.</p></div></div>
- <section class="empty-state"><Icon name="book" size={40}/><h2>Ainda sem lista de sessões.</h2><p>A Fase 2 grava o registro cego. A lista e os filtros vêm na fase seguinte.</p></section>
+ <History active={page === 'history' && appConnected}/>
  {:else if page === 'stats'}
- <div class="page-title"><div><h1>Estatísticas</h1><p>Estatísticas contínuas chegam na Fase 3.</p></div></div>
- <section class="empty-state"><Icon name="chart" size={40}/><h2>Sem totais ainda.</h2><p>A taxa de acertos e o gráfico cumulativo usam apenas escolhas confirmadas, a partir da Fase 3.</p></section>
+ <Statistics active={page === 'stats' && appConnected}/>
  {:else if page === 'settings'}
- <div class="page-title"><div><h1>Configurações</h1><p>Preferências locais e resumo do catálogo instalado.</p></div></div>
+ <div class="page-title"><div><h1>Configurações</h1><p>Preferências locais e gestão do catálogo instalado.</p></div></div>
  <section class="settings-section"><div><h2>Aparência</h2><p>O papel de desenho permanece branco nos dois temas.</p></div><button class="secondary" onclick={toggleTheme}><Icon name={dark ? 'sun' : 'moon'}/>{dark ? 'Usar tema claro' : 'Usar tema escuro'}</button></section>
- <section class="settings-section"><div><h2>Banco de alvos</h2>{#if appConnected && catalogSummary}<p>Revisão ativa · {catalogSummary.catalogLabel || 'bundled'}</p><p class="small muted">{catalogSummary.eligibleCount} elegíveis · {catalogSummary.excludedCount} exclusões</p>{#if catalogSummary.exclusions?.length}<details class="catalog-exclusions"><summary>Ver exclusões (amostra)</summary><ul>{#each catalogSummary.exclusions as ex}<li class="small muted">{ex.reason}{#if ex.path} · {ex.path}{/if}</li>{/each}</ul></details>{/if}{:else}<p>Autentique esta aba pela URL do executável para ver o resumo do catálogo.</p>{/if}<p class="small muted">Substituição do catálogo e backup ZIP chegam nas fases 3 e 4.</p></div><span class="muted small">{appConnected ? (catalogSummary?.ready ? 'Pronto' : 'Indisponível') : 'Aguardando autenticação'}</span></section>
+ <section class="settings-section"><div><h2>Banco de alvos</h2>{#if appConnected && catalogSummary}<p>Revisão ativa · {catalogSummary.catalogLabel || 'bundled'}</p><p class="small muted">{catalogSummary.eligibleCount} elegíveis · {catalogSummary.excludedCount} exclusões</p>{#if catalogSummary.exclusions?.length}<details class="catalog-exclusions"><summary>Ver exclusões (amostra)</summary><ul>{#each catalogSummary.exclusions as ex}<li class="small muted">{ex.reason}{#if ex.path} · {ex.path}{/if}</li>{/each}</ul></details>{/if}{:else}<p>Autentique esta aba pela URL do executável para ver o resumo do catálogo.</p>{/if}
+ {#if appConnected}
+ <div class="settings-actions" style="margin-top:16px;flex-wrap:wrap">
+  <label class="file-button"><Icon name="download"/>Importar ZIP<input type="file" accept=".zip,application/zip" disabled={catalogBusy || !!active} onchange={onZipImport}/></label>
+  <button class="secondary" disabled={catalogBusy || !!active} onclick={onRepairCatalog}>Reparar catálogo</button>
+ </div>
+ <div class="settings-actions" style="margin-top:12px;flex-wrap:wrap;width:100%">
+  <input type="text" placeholder="Caminho absoluto da pasta (avançado)" bind:value={folderPath} disabled={catalogBusy || !!active} style="flex:1;min-width:220px;margin:0"/>
+  <button class="secondary" disabled={catalogBusy || !!active || !folderPath.trim()} onclick={onFolderImport}>Importar pasta</button>
+ </div>
+ <p class="small muted" style="margin-top:10px">{active ? 'Substitução bloqueada enquanto há sessão em coleta ou escolha.' : 'A substituição valida antes de ativar. Revisões antigas usadas pelo histórico permanecem. Backup ZIP chega na Fase 4.'}</p>
+ {/if}
+ </div><span class="muted small">{appConnected ? (catalogSummary?.ready ? 'Pronto' : 'Indisponível') : 'Aguardando autenticação'}</span></section>
  {#if notice}<p class="inline-note" role="status">{notice}</p>{/if}
  <section class="settings-section"><div><h2>Aplicativo local</h2><p>Go + Chi · Svelte · SQLite · Tailwind<br/>Windows e Linux, offline, com históricos independentes.</p></div></section>
  {/if}

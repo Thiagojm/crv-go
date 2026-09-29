@@ -310,7 +310,7 @@ func TestReadyOpensSessionsInPhase2(t *testing.T) {
 	got := apiJSON(t, s, http.MethodGet, "/api/ready", "", cookie, "", "")
 	var body map[string]any
 	_ = json.Unmarshal(got.Body.Bytes(), &body)
-	if body["sessionsOpen"] != true || body["phase"] != "2" {
+	if body["sessionsOpen"] != true || body["phase"] != "3" {
 		t.Fatalf("%v", body)
 	}
 }
