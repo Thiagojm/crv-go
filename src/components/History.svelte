@@ -3,7 +3,7 @@
  import RecordView from './Record.svelte';
  import {durationMs, emptyRecord, type RecordData} from '../data';
  import {
-  fetchHistory, getSession, saveComment,
+  fetchHistory, getSession, saveComment, downloadHistoryCSV, openSessionPrint,
   type HistoryItem, type SessionDTO
  } from '../api';
 
@@ -23,6 +23,7 @@
  let commentDraft = '';
  let commentBusy = false;
  let commentNotice = '';
+ let exportBusy = false;
 
  const stateLabel: {[k: string]: string} = {
   collecting: 'Em coleta',
@@ -134,6 +135,22 @@
   void load();
  }
 
+ async function onExportCSV() {
+  if (exportBusy) return;
+  exportBusy = true;
+  error = '';
+  try {
+   const states = stateFilter ? [stateFilter] : [];
+   const from = fromDate ? localDayBounds(fromDate, false) : undefined;
+   const to = toDate ? localDayBounds(toDate, true) : undefined;
+   await downloadHistoryCSV({states, from, to});
+  } catch (e) {
+   error = e instanceof Error ? e.message : 'Falha ao exportar CSV';
+  } finally {
+   exportBusy = false;
+  }
+ }
+
  $: if (active) void load(true);
 </script>
 
@@ -143,7 +160,10 @@
    <h1>{selected.code}</h1>
    <p>{stateLabel[selected.state] || selected.state} · {formatWhen(selected.createdAt)}</p>
   </div>
-  <button class="secondary" onclick={() => { selected = null; }}><Icon name="back"/>Voltar à lista</button>
+  <div class="settings-actions">
+   <button class="secondary" onclick={() => openSessionPrint(selected!.id)} title="Abre a vista de impressão; use Salvar como PDF no diálogo do navegador">Exportar PDF</button>
+   <button class="secondary" onclick={() => { selected = null; }}><Icon name="back"/>Voltar à lista</button>
+  </div>
  </div>
  {#if selected.state === 'completed' && selected.feedback}
   <section class="surface feedback-photo" style="margin-bottom:20px">
@@ -184,6 +204,7 @@
    <h1>Histórico</h1>
    <p>Sessões reais, da mais recente para a mais antiga.</p>
   </div>
+  <button class="secondary" disabled={exportBusy || loading} onclick={() => void onExportCSV()}>Exportar CSV</button>
  </div>
  <div class="section-heading">
   <h2>{total} {total === 1 ? 'sessão' : 'sessões'}</h2>

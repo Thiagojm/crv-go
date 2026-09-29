@@ -45,13 +45,13 @@ O mesmo HTML está em `dist/index.html`. Use sempre o mesmo arquivo e navegador 
 
 **Não é a versão experimental nem o aplicativo final.** As mesmas quatro fotografias se repetem e a identidade do alvo está no frontend/armazenamento do navegador. Não use os resultados para inferir acurácia de RV.
 
-A Fase 3 do executável Go persiste a sessão cega e expõe histórico real, estatísticas contínuas e importação opcional de catálogo (ZIP/pasta); PDF/CSV e backup ZIP ainda não existem (Fase 4). A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
+A Fase 4 do executável Go persiste a sessão cega, histórico, estatísticas, importação de catálogo, exportação CSV, vista imprimível para Salvar como PDF e backup/restauração ZIP. O empacotamento Windows/Linux permanece na Fase 5. A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
 
 O fechamento inesperado pode perder dados ainda não gravados. O controle local é próprio de protótipo e não impede inspeção deliberada nem edição pelo desenvolvedor do navegador. A restauração JSON aceita apenas o formato deste protótipo.
 
 Nenhuma alteração foi feita no repositório SRV. O catálogo unificado e as imagens agora estão versionados em `farsight/` por decisão do usuário; o protótipo continua usando somente as quatro fotos demonstrativas.
 
-## Aplicativo local (Fase 3)
+## Aplicativo local (Fase 4)
 
 Requisitos de desenvolvimento: Node 24+, Go 1.26+, npm. No PowerShell use `npm.cmd` se `npm` for bloqueado.
 

@@ -1,6 +1,6 @@
 # CRV Go — durable decisions
 
-Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them; Phase 4 is the active authorized work. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`.
+Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them; Phase 4 is implemented in the working tree awaiting user validation. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`.
 
 ## Product and presentation — accepted
 

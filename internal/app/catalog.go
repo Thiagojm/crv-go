@@ -15,9 +15,9 @@ import (
 const catalogMaxArchiveBytes = 1 << 30
 
 func (s *Server) mountCatalogRoutes(r chi.Router) {
-	r.Post("/api/catalog/import/folder", s.requireAuthMutating(s.handleCatalogImportFolder))
-	r.Post("/api/catalog/import/zip", s.requireAuthMutating(s.handleCatalogImportZip))
-	r.Post("/api/catalog/repair", s.requireAuthMutating(s.handleCatalogRepair))
+	r.Post("/api/catalog/import/folder", s.requireAuthExclusiveMutating(s.handleCatalogImportFolder))
+	r.Post("/api/catalog/import/zip", s.requireAuthExclusiveMutating(s.handleCatalogImportZip))
+	r.Post("/api/catalog/repair", s.requireAuthExclusiveMutating(s.handleCatalogRepair))
 }
 
 func (s *Server) handleCatalogImportFolder(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,7 @@ func (s *Server) handleCatalogImportFolder(w http.ResponseWriter, r *http.Reques
 	if base := filepath.Base(in.Path); base != "" && base != "." && base != string(filepath.Separator) {
 		label = "import-folder:" + base
 	}
-	s.runCatalogReplace(w, func() (*catalog.InstallResult, error) {
+	s.runCatalogReplace(w, r, func() (*catalog.InstallResult, error) {
 		return catalog.ImportFolder(s.Store, in.Path, label)
 	})
 }
@@ -65,21 +65,18 @@ func (s *Server) handleCatalogImportZip(w http.ResponseWriter, r *http.Request) 
 	default:
 		reader = r.Body
 	}
-	s.runCatalogReplace(w, func() (*catalog.InstallResult, error) {
+	s.runCatalogReplace(w, r, func() (*catalog.InstallResult, error) {
 		return catalog.ImportZip(s.Store, reader, "import-zip")
 	})
 }
 
 func (s *Server) handleCatalogRepair(w http.ResponseWriter, r *http.Request) {
-	s.runCatalogReplace(w, func() (*catalog.InstallResult, error) {
+	s.runCatalogReplace(w, r, func() (*catalog.InstallResult, error) {
 		return catalog.Repair(s.Store, s.CatalogDir)
 	})
 }
 
-func (s *Server) runCatalogReplace(w http.ResponseWriter, fn func() (*catalog.InstallResult, error)) {
-	s.catalogMu.Lock()
-	defer s.catalogMu.Unlock()
-
+func (s *Server) runCatalogReplace(w http.ResponseWriter, r *http.Request, fn func() (*catalog.InstallResult, error)) {
 	active, err := s.Store.ActiveSession()
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, "store_error", "falha ao consultar sessão ativa")

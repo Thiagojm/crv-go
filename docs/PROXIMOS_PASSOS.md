@@ -9,11 +9,12 @@ Updated: 2026-09-28. The approved implementation plan is `docs/plans/2026-09-28-
 - [x] New offline design explicitly approved on 2026-09-28; phased implementation plan written.
 - [x] Phase 1 implemented: Go launch, SQLite catalog install, loopback protection, readiness UI, shutdown.
 - [x] Phase 2 implemented, committed and pushed: blinded persisted session, server-side transitions, autosave/recovery, drawing and choice, API and Playwright tests.
-- [x] Phase 3 implemented, committed and pushed: real history (pagination + comment edit), continuous statistics, optional catalog ZIP/folder replacement and in-place repair.
+- [x] Phase 3 implemented, committed and pushed (`fed1076`): real history (pagination + comment edit), continuous statistics, optional catalog ZIP/folder replacement and in-place repair.
+- [x] Phase 4 implemented in the working tree: CSV export, printable session HTML (Exportar PDF → Salvar como PDF nativo), ZIP backup/restore with pre-restore copy and interrupted-swap recovery.
 
 ## Current boundary
 
-- [ ] **Phase 4 in progress** (user authorized “commit and push, inicie a fase 4”; full PDF/CSV + ZIP backup/restore). Stop at the Phase-4 user-validation gate.
+- [ ] **User validation of Phase 4** after the latest restore/PDF corrections (export short/long PDF via browser dialog and confirm the target image + Esboço stay intact, open CSV in a spreadsheet, backup ZIP then restore into an isolated data dir, confirm paused active session returns from backup, reject bad archive). No commit/push unless separately requested.
 - [ ] After acceptance, explicit authorization required before Phase 5 (packaging and real OS delivery evidence).
 - [ ] At every phase gate, report what passed, what remains unverified, how to test, and update `docs/CONTEXTO.md` and this file. Preserve unrelated work and keep commit/push separate from phase authorization.
 

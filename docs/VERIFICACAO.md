@@ -72,5 +72,15 @@ Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.
 - UI: Histórico (lista + detalhe com Record/feedback), Estatísticas (faixa + SVG + tabela), Configurações (Importar ZIP, pasta absoluta, Reparar). Assets demo removidos do frontend; `dist` sem banco.
 - Browser MCP: fluxo vazio → 1 sessão concluída na lista/detalhe; estatísticas 0/1; import visível; viewport 390×844.
 
-Não verificado nesta fase: PDF/CSV/ZIP backup (Fase 4), empacotamento Linux/Windows (Fase 5), validação manual do usuário com mouse na instalação real.
+## Fase 4 — exportações e backup (2026-09-28, Windows)
+
+Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.cmd run build`, `go vet ./...`, `go test ./...`, `npm.cmd run test:e2e`, `go build -o bin/crv.exe .`.
+
+- CSV (`GET /api/exports/csv`): colunas permitidas; strings tipo fórmula neutralizadas; sem SHA/caminhos/créditos.
+- PDF: vista HTML imprimível (`GET /api/exports/sessions/{id}/print`) com desenhos SVG e orientação “Salvar como PDF”; alvo via `template.URL` (data URI); Esboço em página própria com título+desenho; e2e exige `naturalWidth>0`, imagem embutida no PDF e headings com vetores (pymupdf). Diálogo nativo do navegador fica para validação manual.
+- Backup ZIP `crv-backup-v1` com snapshot `VACUUM INTO`, revisões referenciadas, preferências e manifesto SHA-256; restauração com cópia prévia, marcador durável e `ResolveInterrupted` no startup.
+- Endurecimento: marcador `live_moved` antes de mover o payload; `dataMu` RWMutex drena handlers em voo antes do restore; undo falho preserva `OldDir`; ValidateArchive exige revisões ativas/referenciadas pelo DB estagiado; Create/Validate exigem arquivos de imagem; download de backup faz `queue.flush()`.
+- UI: Exportar CSV / Exportar PDF no Histórico; Baixar/Restaurar backup nas Configurações.
+
+Não verificado nesta fase: empacotamento Linux/Windows (Fase 5), diálogo nativo Salvar como PDF pelo usuário, `go test -race` (CGO_ENABLED=0 neste host), validação manual completa do restore na instalação real.
 

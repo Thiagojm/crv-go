@@ -237,7 +237,7 @@ func TestStatisticsA9AndHistoryFilters(t *testing.T) {
 	settings := apiJSON(t, s, http.MethodGet, "/api/settings", "", cookie, "", "")
 	var set map[string]any
 	_ = json.Unmarshal(settings.Body.Bytes(), &set)
-	if set["phase"] != "3" || set["historyAvailable"] != true {
+	if set["phase"] != "4" || set["historyAvailable"] != true {
 		t.Fatalf("settings: %v", set)
 	}
 }

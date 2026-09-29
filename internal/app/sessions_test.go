@@ -27,23 +27,31 @@ func catalogServer(t *testing.T) *Server {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = st.Close() })
 	res, err := catalog.Install(st, cat)
 	if err != nil {
+		_ = st.Close()
 		t.Fatal(err)
 	}
 	sec, err := NewSecurity()
 	if err != nil {
+		_ = st.Close()
 		t.Fatal(err)
 	}
-	return &Server{
-		Store:    st,
-		Security: sec,
-		Sessions: session.New(st),
-		Port:     34567,
-		Ready:    true,
-		Report:   res.Report,
+	s := &Server{
+		Store:      st,
+		Security:   sec,
+		Sessions:   session.New(st),
+		Port:       34567,
+		Ready:      true,
+		Report:     res.Report,
+		CatalogDir: cat,
 	}
+	t.Cleanup(func() {
+		if s.Store != nil {
+			_ = s.Store.Close()
+		}
+	})
+	return s
 }
 
 func apiJSON(t *testing.T, s *Server, method, path, csrf string, cookie *http.Cookie, lease, body string) *httptest.ResponseRecorder {
@@ -310,7 +318,7 @@ func TestReadyOpensSessionsInPhase2(t *testing.T) {
 	got := apiJSON(t, s, http.MethodGet, "/api/ready", "", cookie, "", "")
 	var body map[string]any
 	_ = json.Unmarshal(got.Body.Bytes(), &body)
-	if body["sessionsOpen"] != true || body["phase"] != "3" {
+	if body["sessionsOpen"] != true || body["phase"] != "4" {
 		t.Fatalf("%v", body)
 	}
 }

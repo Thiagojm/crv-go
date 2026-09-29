@@ -71,7 +71,7 @@ type sessionEnvelope struct {
 }
 
 func (s *Server) mountSessionRoutes(r chi.Router) {
-	r.Post("/api/sessions", s.requireAuthMutating(s.handleCreateSession))
+	r.Post("/api/sessions", s.requireAuthExclusiveMutating(s.handleCreateSession))
 	r.Get("/api/sessions/current", s.requireAuth(s.handleCurrentSession))
 	r.Get("/api/sessions/{id}", s.requireAuth(s.handleGetSession))
 	r.Put("/api/sessions/{id}/record", s.requireAuthMutating(s.handleSaveRecord))
@@ -109,8 +109,6 @@ func (s *Server) handleCreateSession(w http.ResponseWriter, r *http.Request) {
 	if err := readJSON(w, r, &in); err != nil {
 		return
 	}
-	s.catalogMu.Lock()
-	defer s.catalogMu.Unlock()
 	row, lease, err := s.svc().Create(session.CreateInput{
 		OperationID: in.OperationID, Disposition: in.Disposition, Concentration: in.Concentration,
 	})

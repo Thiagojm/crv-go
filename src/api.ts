@@ -260,6 +260,80 @@ export async function repairCatalog(): Promise<CatalogImportResult> {
   return parse(res);
 }
 
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+export async function downloadHistoryCSV(opts: {
+  states?: string[];
+  from?: string;
+  to?: string;
+} = {}): Promise<void> {
+  const q = new URLSearchParams();
+  if (opts.states?.length) q.set('state', opts.states.join(','));
+  if (opts.from) q.set('from', opts.from);
+  if (opts.to) q.set('to', opts.to);
+  const res = await fetch(`/api/exports/csv?${q}`, {credentials: 'same-origin', headers: headers()});
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as {message?: string}).message || `HTTP ${res.status}`);
+  }
+  const dispo = res.headers.get('Content-Disposition') || '';
+  const m = /filename="([^"]+)"/.exec(dispo);
+  downloadBlob(await res.blob(), m?.[1] || 'crv-historico.csv');
+}
+
+export function openSessionPrint(id: string): void {
+  window.open(`/api/exports/sessions/${encodeURIComponent(id)}/print`, '_blank', 'noopener');
+}
+
+export async function downloadBackup(): Promise<void> {
+  const res = await fetch('/api/backup', {credentials: 'same-origin', headers: headers()});
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error((body as {message?: string}).message || `HTTP ${res.status}`);
+  }
+  const dispo = res.headers.get('Content-Disposition') || '';
+  const m = /filename="([^"]+)"/.exec(dispo);
+  downloadBlob(await res.blob(), m?.[1] || 'crv-backup.zip');
+}
+
+export type RestoreResult = {
+  ok: boolean;
+  preBackupPath?: string;
+  bootstrapToken?: string;
+  message?: string;
+  ready?: boolean;
+};
+
+export async function restoreBackup(file: File): Promise<RestoreResult> {
+  const body = new FormData();
+  body.append('archive', file);
+  body.append('confirm', 'true');
+  const res = await fetch('/api/backup/restore', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: headers(true),
+    body,
+  });
+  return parse(res);
+}
+
+export async function bootstrapWithToken(token: string): Promise<boolean> {
+  const res = await fetch(`/api/bootstrap?token=${encodeURIComponent(token)}`, {credentials: 'same-origin'});
+  if (!res.ok) return false;
+  const body = await res.json();
+  setCsrf(body.csrf || '');
+  sessionStorage.removeItem(LEASE_KEY);
+  lease = '';
+  return !!csrf;
+}
+
 export async function saveRecord(id: string, expectedRevision: number, record: RecordData): Promise<SessionDTO> {
   const res = await fetch(`/api/sessions/${id}/record`, {
     method: 'PUT',

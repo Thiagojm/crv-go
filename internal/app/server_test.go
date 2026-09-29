@@ -100,7 +100,7 @@ func TestAuthCSRFAndNoStaticBank(t *testing.T) {
 	}
 	var ready map[string]any
 	_ = json.Unmarshal(rec.Body.Bytes(), &ready)
-	if ready["phase"] != "3" {
+	if ready["phase"] != "4" {
 		t.Fatalf("phase: %v", ready["phase"])
 	}
 

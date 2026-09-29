@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/Thiagojm/crv-go/internal/app"
+	"github.com/Thiagojm/crv-go/internal/backup"
 	"github.com/Thiagojm/crv-go/internal/store"
 )
 
@@ -47,6 +48,10 @@ func main() {
 		log.Fatal(err)
 	}
 	defer func() { _ = lock.Release() }()
+
+	if err := backup.ResolveInterrupted(dataDir); err != nil {
+		log.Fatal(err)
+	}
 
 	st, err := store.Open(dataDir)
 	if err != nil {

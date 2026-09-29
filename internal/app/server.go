@@ -32,12 +32,16 @@ type Server struct {
 	InitError  string
 	OnListen   func(port int, url string)
 
-	mu        sync.Mutex
-	catalogMu sync.Mutex
-	httpSrv   *http.Server
-	shutdown  chan struct{}
-	once      sync.Once
-	pauseOnce sync.Once
+	mu          sync.Mutex
+	dataMu      sync.RWMutex // shared for handlers; exclusive for restore/catalog/backup/create
+	maintaining int32
+	httpSrv     *http.Server
+	shutdown    chan struct{}
+	once        sync.Once
+	pauseOnce   sync.Once
+
+	// testGate runs while the data lock is held after auth (tests only).
+	testGate func()
 }
 
 type readinessDTO struct {
@@ -67,6 +71,7 @@ func (s *Server) Handler() http.Handler {
 	s.mountCatalogRoutes(r)
 	s.mountSessionRoutes(r)
 	s.mountHistoryRoutes(r)
+	s.mountExportRoutes(r)
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/api/") {
 			http.NotFound(w, r)
@@ -95,27 +100,63 @@ func (s *Server) securityMiddleware(next http.Handler) http.Handler {
 }
 
 func (s *Server) requireAuth(h http.HandlerFunc) http.HandlerFunc {
+	return s.wrapAuth(false, false, h)
+}
+
+func (s *Server) requireAuthMutating(h http.HandlerFunc) http.HandlerFunc {
+	return s.wrapAuth(true, false, h)
+}
+
+func (s *Server) requireAuthExclusive(h http.HandlerFunc) http.HandlerFunc {
+	return s.wrapAuth(false, true, h)
+}
+
+func (s *Server) requireAuthExclusiveMutating(h http.HandlerFunc) http.HandlerFunc {
+	return s.wrapAuth(true, true, h)
+}
+
+// wrapAuth authenticates, then holds a shared or exclusive data lock for the
+// whole handler so restore can drain in-flight work before swapping the store.
+func (s *Server) wrapAuth(mutating, exclusive bool, h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !cookieOK(r, s.Security.SessionCookieValue()) {
-			http.Error(w, "não autenticado", http.StatusUnauthorized)
+		if !s.ensureAuth(w, r, mutating) {
 			return
+		}
+		if exclusive {
+			s.dataMu.Lock()
+			defer s.dataMu.Unlock()
+		} else {
+			s.dataMu.RLock()
+			defer s.dataMu.RUnlock()
+		}
+		// Re-check after the lock: restore may have finished (or maintaining may
+		// still be set for waiters that raced the flag) and credentials rotated.
+		if !s.ensureAuth(w, r, mutating) {
+			return
+		}
+		if s.testGate != nil {
+			s.testGate()
 		}
 		h(w, r)
 	}
 }
 
-func (s *Server) requireAuthMutating(h http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if !cookieOK(r, s.Security.SessionCookieValue()) {
-			http.Error(w, "não autenticado", http.StatusUnauthorized)
-			return
-		}
-		if !csrfOK(r, s.Security.CSRFToken()) {
-			http.Error(w, "CSRF inválido", http.StatusForbidden)
-			return
-		}
-		h(w, r)
+// ensureAuth checks maintenance and credentials against the current Security.
+// Call again after waiting on locks that may span a restore credential rotation.
+func (s *Server) ensureAuth(w http.ResponseWriter, r *http.Request, mutating bool) bool {
+	if s.maintenanceBlocked(w) {
+		return false
 	}
+	sec := s.Security
+	if sec == nil || !cookieOK(r, sec.SessionCookieValue()) {
+		http.Error(w, "não autenticado", http.StatusUnauthorized)
+		return false
+	}
+	if mutating && !csrfOK(r, sec.CSRFToken()) {
+		http.Error(w, "CSRF inválido", http.StatusForbidden)
+		return false
+	}
+	return true
 }
 
 func (s *Server) handleBootstrap(w http.ResponseWriter, r *http.Request) {
@@ -165,7 +206,7 @@ func (s *Server) handleCatalogSummary(w http.ResponseWriter, r *http.Request) {
 		"exclusions":        truncateExclusions(s.Report.Exclusions, 50),
 		"sessionsOpen":      s.sessionsOpen(),
 		"report":            s.Report,
-		"phase":             "3",
+		"phase":             "4",
 	})
 }
 
@@ -175,10 +216,11 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 		"durationMinutes":  10,
 		"catalog":          s.readiness(),
 		"sessionsOpen":     s.sessionsOpen(),
-		"phase":            "3",
+		"phase":            "4",
 		"historyAvailable": true,
-		"exportsAvailable": false,
-		"message":          "Histórico e estatísticas contínuas estão disponíveis. Exportações e cópia de segurança chegam na fase seguinte.",
+		"exportsAvailable": true,
+		"backupAvailable":  true,
+		"message":          "Histórico, estatísticas, exportações CSV/PDF e cópia de segurança ZIP estão disponíveis.",
 	})
 }
 
@@ -197,7 +239,7 @@ func (s *Server) sessionsOpen() bool {
 }
 
 func (s *Server) readiness() readinessDTO {
-	msg := "Catálogo pronto. Histórico e estatísticas contínuas estão disponíveis."
+	msg := "Catálogo pronto. Histórico, estatísticas, exportações e cópia de segurança estão disponíveis."
 	if !s.Ready {
 		msg = "Catálogo não está pronto. Use reparo/importação quando disponível."
 		if s.InitError != "" {
@@ -206,7 +248,7 @@ func (s *Server) readiness() readinessDTO {
 	}
 	return readinessDTO{
 		Ready:         s.Ready,
-		Phase:         "3",
+		Phase:         "4",
 		SessionsOpen:  s.sessionsOpen(),
 		EligibleCount: s.Report.EligibleCount,
 		ExcludedCount: s.Report.ExcludedCount,
