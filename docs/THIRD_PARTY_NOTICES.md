@@ -51,4 +51,4 @@ The manifest digests identify the dependency evidence used for each package; ind
 
 ## CRV Go project
 
-This notice covers bundled third-party material. It does not declare or change the license terms for CRV Go's own code.
+The CRV Go source code is released under the MIT License (see `LICENSE` in the repository root and `LICENSE.txt` in distributed packages). This notice document specifically covers bundled third-party material, fonts, libraries, and the Farsight catalog archive.

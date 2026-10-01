@@ -90,6 +90,8 @@ function copyLicense(source, destination) {
 function bundledLicenses(stage) {
   const licenseDir = path.join(stage, 'LICENSES');
   mkdirSync(licenseDir, { recursive: true });
+  copyLicense(path.join(root, 'LICENSE'), path.join(stage, 'LICENSE.txt'));
+  copyLicense(path.join(root, 'LICENSE'), path.join(licenseDir, 'CRV-Go-MIT.txt'));
   copyLicense(path.join(root, 'docs', 'INTER-OFL.txt'), path.join(licenseDir, 'Inter-OFL-1.1.txt'));
 
   const gomodcache = run('go', ['env', 'GOMODCACHE']);
