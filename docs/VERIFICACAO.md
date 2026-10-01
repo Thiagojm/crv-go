@@ -84,3 +84,30 @@ Ambiente: Windows, Go 1.26.5, Node 24.18.0. Comandos: `npm.cmd run check`, `npm.
 
 Não verificado nesta fase: empacotamento Linux/Windows (Fase 5), diálogo nativo Salvar como PDF pelo usuário, `go test -race` (CGO_ENABLED=0 neste host), validação manual completa do restore na instalação real.
 
+## Phase 5 — local distribution (2026-10-01)
+
+Host: Windows 11 Pro 10.0.26300, build 26300. Toolchain: Go 1.27.1 windows/amd64, Node 24.21.0, npm 12.2.0; browser: Playwright Chromium 153.0.8010.12.
+
+Final `npm.cmd run test:e2e` with `CRV_PACKAGE_DIR` set to the extracted final Windows archive: **8 passed**. Without it, the distribution test is intentionally skipped (7 passed / 1 skipped).
+
+`go test ./...`, `go vet ./...`, `npm.cmd run check` (0 errors/warnings), `npm.cmd run build` and `npm.cmd run package` passed. Archives: `packages/crv-go-windows-amd64.tar.gz` and `packages/crv-go-linux-amd64.tar.gz` (approximately 21 MiB each); actual hashes are in `packages/SHA256SUMS.txt`. Tar listings confirm the sibling bank/licenses/instructions, no user data or development outputs, and Linux executable mode 0755. Source catalog/credits are unchanged; the frontend remains a single embedded HTML without the bank.
+
+The extracted Windows executable passed `tests/package.spec.ts`: unrelated working directory, paths with spaces, empty child PATH, bootstrap, real catalog (192 eligible / 4 excluded), mouse drawing, shutdown/restart, preserved drawing, editing takeover/resume, complete session, CSV, headless PDF with decoded target image, ZIP backup/restore, missing-bank and insufficient-bank (three eligible images) repair states and graceful shutdown. External browser requests were blocked; none were attempted. This is browser-network evidence, not a physically disconnected host test. Both home themes at 1280 pixels and the dark home at 1000 pixels were visually inspected; no horizontal overflow at 1000 pixels. The modal closes with Escape. Full keyboard traversal and image/drawing review remain manual requirements.
+
+To include the distribution test in the normal suite on Windows (extract first):
+
+```powershell
+$env:CRV_PACKAGE_DIR = 'D:\path with spaces\crv-go-windows-amd64'
+npm.cmd run test:e2e
+```
+
+On Linux, point `CRV_PACKAGE_DIR` to the extracted Linux directory and use `npm run test:e2e` on a development test host. The executable itself requires neither Node nor Go; the browser test harness does. The opt-in test never launches Node/Go children to build or run the application. Test data and screenshots remain in isolated OS temporary directories printed by the test; PDF fixture evidence remains under gitignored `tmp-data/phase4-pdf-evidence/`.
+
+Phase 5 remains **incomplete**: real Linux runtime (WSL is not installed), host-network-disabled operation, default-browser automatic launch, native Save as PDF, complete manual keyboard/drawing checks have no new evidence. No commit/push, signing or publication was performed.
+
+## Drawing corrections and commit verification (2026-10-01)
+
+Pointer-captured points outside the canvas are clamped before saving, preserving backend coordinate validation. Removed short-window canvas sizing that left part of the dashed sketch area unusable; the drawing surface fills the area at its 1000:620 aspect ratio. The session test verifies accepted saves at boundary coordinates for ideogram/sketch and canvas geometry at 1000×720, 1280×720 and 1440×900. `npm.cmd run check` passed with zero errors/warnings; the full source `npm.cmd run test:e2e` was rerun before commit: 7 passed / 1 skipped (distribution opt-in). Frontend build and `go build -o bin/crv-canvas-fix.exe .` passed. The corrected binary started and served HTTP 200 using isolated test data.
+
+The user accepted the canvas correction and separately requested memory synchronization, commit and push. Existing Phase-5 archives predate these corrections; regenerate after closing the previous packaged executable. The historical eight-test package result above does not validate the corrected archives. Linux/native platform gates and signing/publication remain open.
+

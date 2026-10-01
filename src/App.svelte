@@ -244,7 +244,7 @@
  }
  async function go(n: number) {
   if (!current || current.state !== 'collecting' || n < 1 || n > 4) return;
-  if (!(await queue.flush())) { notice = 'Não foi possível salvar. Corrija antes de mudar de etapa.'; return; }
+  if (!(await queue.flush())) { notice = `Não foi possível salvar. ${queue.lastError} Corrija antes de mudar de etapa.`; return; }
   const prev = draft.step;
   draft.step = n;
   touchDraft();

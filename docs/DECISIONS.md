@@ -1,6 +1,6 @@
 # CRV Go — durable decisions
 
-Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them; Phase 4 is on `main` (`221b923`) awaiting user validation before Phase 5. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`.
+Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented only when the approved phase plan reaches them. Phase 5 was explicitly authorized on 2026-10-01; local packaging is implemented, with platform validation incomplete. Full behavior and acceptance criteria are in `docs/specs/2026-09-28-crv-offline-design.md`; current evidence is in `docs/CONTEXTO.md`.
 
 ## Product and presentation — accepted
 
@@ -17,6 +17,6 @@ Accepted on 2026-09-28 unless otherwise stated. These decisions are implemented 
 ## Delivery and execution — accepted
 
 - The approved design supersedes the older `docs/design_app_crv.md` where it describes mandatory first-use import, pool-A-only selection, two modes, fixed blocks, no-repeat cycles or Wilson/binomial block inference. Its stage fields and help remain the source for those exact lists/texts.
-- The approved plan has five phases, each ending with user validation and separate authorization for the next. Spec/plan approval does not authorize implementation, commits, pushes or release work. Phases 1–3 were authorized, implemented, committed and pushed. Phase 4 was separately authorized (full exports + backup/restore); it does not authorize Phase 5, signing or publication.
+- The approved plan has five phases, each ending with user validation and separate authorization for the next. Spec/plan approval does not authorize implementation, commits, pushes or release work. Phases 1–4 and restore corrections were authorized, implemented, committed and pushed. Phase 5 was separately authorized on 2026-10-01 (local packaging and platform verification); the user separately requested project-memory synchronization and commit/push of this delivery and its drawing corrections on the same date. Signing/publication and future changes remain outside that authorization.
 - Catalog repair recomposes missing files in-place into existing `rev-{id}` directories from a matching `CatalogDir` by SHA-256. It must not deactivate the revision used by historical sessions or allocate a new revision id for repair.
 - Preserve server-side state transitions, crash recovery, per-installation storage and narrow loopback API access. These are required before calling a session blinded or saved. The prototype's localStorage flow does not satisfy them.

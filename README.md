@@ -1,105 +1,54 @@
-# CRV Go — projeto e contexto de continuidade
+# CRV Go
 
-Checkout: `D:\Projetos\crv-go`. Comece por `AGENTS.md`, pela [spec aprovada](docs/specs/2026-09-28-crv-offline-design.md) e pelo [plano](docs/plans/2026-09-28-crv-offline-plan.md). A **Fase 3** (histórico, estatísticas contínuas e substituição opcional do catálogo) está no working tree à espera de validação do usuário; exportações são Fase 4.
+Aplicativo local e offline para registrar sessões inspiradas nas etapas I–III de CRV e escolher uma entre quatro imagens após bloquear o registro. Ele não interpreta desenhos nem estabelece um mecanismo paranormal. O histórico fica no dispositivo e não é sincronizado.
 
-Repositório público: https://github.com/Thiagojm/crv-go
+## Usar uma distribuição
 
-Este pacote reúne o protótipo histórico, o código Go da Fase 1, design, capturas e decisões.
+Os pacotes Windows e Linux ficam em `packages/` depois de executar `npm run package`. Extraia o arquivo da plataforma e mantenha `farsight/` ao lado do executável. No Windows, abra `crv.exe`. No Linux, execute `chmod +x crv` e depois `./crv`. O aplicativo abre a interface no navegador padrão; não requer Node, Go ou internet para funcionar. A primeira execução valida e instala o catálogo nos dados locais do usuário.
 
-# CRV — protótipo navegável
+Para encerrar, use **Salvar e encerrar**. Para levar dados a outra instalação, use Configurações para criar e restaurar um backup ZIP. Históricos pertencem a cada instalação.
 
-Protótipo de interface em português, criado a partir do design aprovado em 26/09/2026. Projeto independente do SRV. Inclui desenho com mouse e fluxo dos estágios I–III até escolha e feedback.
+Cada distribuição contém `README.txt`, `THIRD_PARTY_NOTICES.txt` e os textos de licença em `LICENSES/`. O pacote contém o catálogo Farsight e créditos de origem; consulte [os avisos de terceiros](docs/THIRD_PARTY_NOTICES.md) para fontes, limites e hashes específicos do build. O hash dos arquivos de distribuição está em `packages/SHA256SUMS.txt`.
 
-## Abrir sem instalar
+## Desenvolvimento
 
-Abra `crv_prototipo.html` em um navegador de desktop atualizado, como Edge, Chrome ou Firefox. O arquivo inclui interface, fontes e imagens; não depende de internet. Se a prévia de arquivos do ChatGPT não executar a interface, baixe o HTML e abra-o no navegador do PC.
-
-O mesmo HTML está em `dist/index.html`. Use sempre o mesmo arquivo e navegador para preservar o histórico demonstrativo. Armazenamento de arquivos locais varia entre navegadores; se houver restrição, a interface avisa. A exportação JSON em Configurações permite guardar uma cópia.
-
-## O que experimentar
-
-1. Clique em Nova sessão e Iniciar demonstração.
-2. Faça um ideograma com o mouse. Teste caneta, espessura, desfazer/refazer e borracha (remove um traço inteiro).
-3. Abra Registrar impressões, marque atributos e escreva livremente.
-4. Use Como preencher e Ver exemplo fictício em qualquer etapa.
-5. Preencha sensoriais e faça um esboço no estágio III.
-6. Revise, confirme o bloqueio e compare as quatro imagens.
-7. Confirme uma escolha e registre sua reflexão após o feedback.
-8. Consulte histórico, estatísticas, tema escuro e exportações CSV/JSON.
-9. Teste Salvar e encerrar e a retomada do registro.
-
-## Funciona nesta entrega
-
-- Fluxo navegável completo, campos opcionais e listas do design aprovado.
-- Canvas por mouse, com traços separados para ideograma e esboço.
-- Ajuda por etapa, exemplos recolhidos e guia inicial.
-- Registro bloqueado pela interface antes das alternativas.
-- Ordem e alvo demonstrativos preservados ao recarregar.
-- Histórico no armazenamento local do navegador e registros abandonados.
-- Comentário de feedback separado do registro original.
-- Cronômetro de coleta e escolha, pausa e retomada.
-- Temas claro/escuro; layout desktop e adaptação a janela estreita.
-- Exportação CSV; backup e restauração JSON da demonstração.
-
-## Limites explícitos
-
-**Não é a versão experimental nem o aplicativo final.** As mesmas quatro fotografias se repetem e a identidade do alvo está no frontend/armazenamento do navegador. Não use os resultados para inferir acurácia de RV.
-
-A Fase 4 do executável Go persiste a sessão cega, histórico, estatísticas, importação de catálogo, exportação CSV, vista imprimível para Salvar como PDF e backup/restauração ZIP. O empacotamento Windows/Linux permanece na Fase 5. A spec aprovada usa um único modo e permite repetição de imagens entre sessões; as quatro alternativas de cada sessão continuam distintas. No HTML do protótipo, o botão de encerramento apenas mostra uma tela final.
-
-O fechamento inesperado pode perder dados ainda não gravados. O controle local é próprio de protótipo e não impede inspeção deliberada nem edição pelo desenvolvedor do navegador. A restauração JSON aceita apenas o formato deste protótipo.
-
-Nenhuma alteração foi feita no repositório SRV. O catálogo unificado e as imagens agora estão versionados em `farsight/` por decisão do usuário; o protótipo continua usando somente as quatro fotos demonstrativas.
-
-## Aplicativo local (Fase 4)
-
-Requisitos de desenvolvimento: Node 24+, Go 1.26+, npm. No PowerShell use `npm.cmd` se `npm` for bloqueado.
+Requer Node.js 24+ e Go 1.26.5+. No PowerShell, use `npm.cmd` caso `npm` invoque um script bloqueado.
 
 ```sh
-npm.cmd ci
-npm.cmd run check
-npm.cmd run build
+npm ci
+npm run check
+npm run build
 go test ./...
-go build -o bin/crv.exe .
+go vet ./...
+npm run test:e2e
+npm run package
 ```
 
-Execução isolada para testes (não usa o diretório de dados do usuário):
+`npm run package` recompila a interface, compila `crv.exe` para Windows amd64 e `crv` para Linux amd64 com `CGO_ENABLED=0`, e grava os arquivos `.tar.gz` em `packages/`. É uma distribuição local de desenvolvimento, sem instalador, assinatura ou publicação. Compilar o binário Linux no Windows não valida sua execução em Linux.
+
+Execução de desenvolvimento isolada, sem usar o diretório de dados normal:
 
 ```sh
-bin\crv.exe --data-dir tmp-data\demo --catalog-dir farsight --no-browser
+go run . --data-dir tmp-data/demo --catalog-dir farsight --no-browser
 ```
 
-Abra a URL impressa (inclui `#bootstrap=…`). Use **Nova sessão** para o fluxo cego; **Histórico** e **Estatísticas** leem o SQLite local; em **Configurações** dá para importar ZIP/pasta do catálogo (bloqueado com sessão ativa). Exportações chegam na Fase 4. `Salvar e encerrar` pede o shutdown do servidor. Uma segunda instância no mesmo `--data-dir` é recusada.
+O servidor imprime a URL local de inicialização. Sem flags, o executável usa `farsight/` ao lado do binário e os dados locais do usuário.
 
-Sem flags, o executável resolve `farsight/` ao lado do binário e grava dados em `%AppData%\CRV-Go` (Windows) / diretório de config do usuário.
+Para testar um pacote extraído pelo navegador automatizado no PowerShell:
 
-O protótipo histórico continua em `crv_prototipo.html` (abre no navegador sem Go). O build Vite gera `dist/index.html`, embutido pelo `main.go`.
+```powershell
+$env:CRV_PACKAGE_DIR = 'D:\caminho do pacote\crv-go-windows-amd64'
+npm.cmd run test:e2e
+```
 
-### Organização
+Sem essa variável, o teste de distribuição é ignorado. Consulte [a verificação](docs/VERIFICACAO.md) para evidência e pendências: a execução Linux e os testes nativos/offline manuais ainda estão pendentes.
 
-- `src/App.svelte`: navegação e coordenação da sessão local.
-- `src/components/DrawingPad.svelte`: canvas e ferramentas.
-- `src/components/FieldGroup.svelte`: atributos e texto livre.
-- `src/components/Record.svelte`: registro somente leitura.
-- `src/components/Help.svelte`: ajuda contextual.
-- `src/components/Icon.svelte`: ícones SVG.
-- `src/data.ts`: atributos, ajuda, tipos e dados de exemplo.
-- `src/style.css`: tokens, temas e layouts.
-- `docs/design_app_crv.md`: especificação funcional de referência.
-- `docs/DESIGN-SYSTEM.md`: direção visual e desvios intencionais do conceito.
-- `docs/VERIFICACAO.md`: verificações executadas e limites.
-- `docs/conceito.png`: conceito visual gerado.
-- `docs/tela-ideograma.png`, `docs/tela-escolha.png`, `docs/tela-ajuda.png`: capturas do protótipo implementado.
+## Protótipo histórico
 
-## Imagens e fonte
+`crv_prototipo.html` é um protótipo independente, abre diretamente no navegador e mantém demonstrações em localStorage. Seus registros, imagens e resultados não são dados experimentais e não representam a aplicação final. `dist/index.html` é a interface do executável, gerada pelo Vite e embutida no binário; não é uma versão independente do servidor Go.
 
-As quatro fotografias demonstrativas são do Unsplash, preservadas sem sobrepor texto à fotografia. Não fazem parte do banco SRV. Fontes dos arquivos:
+O aplicativo final persiste sessões em SQLite e mantém o alvo no backend. As quatro imagens de cada sessão são distintas, mas podem se repetir em sessões novas. A fase de implementação inclui histórico, estatísticas, catálogo, CSV, impressão para Save as PDF e backup/restauração ZIP.
 
-- https://images.unsplash.com/photo-1470770841072-f978cf4d019e
-- https://images.unsplash.com/photo-1518837695005-2083093ee35b
-- https://images.unsplash.com/photo-1441974231531-c6227db76b6e
-- https://images.unsplash.com/photo-1511818966892-d7d671e672a2
+## Créditos
 
-Inter Variable, por Rasmus Andersson, distribuída via @fontsource-variable/inter sob SIL Open Font License. Licença incluída em `docs/INTER-OFL.txt`.
-
-As dependências conservam suas licenças. As imagens e a referência de interface não estabelecem qualquer evidência sobre remote viewing.
+O catálogo versionado em `farsight/` conserva os créditos originais e sua declaração “Local research archive only.” As fotografias são do Farsight Institute / Courtney Brown e de fotógrafos terceiros, conforme os metadados preservados; isso não concede direitos adicionais sobre os arquivos. A fonte Inter usa SIL Open Font License 1.1. Os detalhes ficam em `docs/THIRD_PARTY_NOTICES.md`.

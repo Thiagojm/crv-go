@@ -92,7 +92,16 @@ test('fluxo cego: desenho, campos, bloqueio, escolha e feedback', async () => {
   await page.mouse.move(box!.x + 40, box!.y + 40);
   await page.mouse.down();
   await page.mouse.move(box!.x + 140, box!.y + 90);
+  // Pointer capture must keep strokes valid when the mouse leaves the canvas.
+  await page.mouse.move(box!.x - 20, box!.y - 20);
+  await page.mouse.move(box!.x + box!.width + 20, box!.y + box!.height + 20);
+  const strokeSaved = page.waitForResponse(res => res.url().endsWith('/record') && res.request().method() === 'PUT');
   await page.mouse.up();
+  const strokeResponse = await strokeSaved;
+  expect(strokeResponse.status()).toBe(200);
+  const saved = (await strokeResponse.json()).session.record.drawings.ideogram[0].points;
+  expect(saved).toContainEqual({x: 0, y: 0});
+  expect(saved).toContainEqual({x: 1000, y: 620});
 
   await page.getByRole('button', {name: 'Registrar impressões'}).click();
   await page.getByText('Curvo', {exact: true}).click();
@@ -105,6 +114,23 @@ test('fluxo cego: desenho, campos, bloqueio, escolha e feedback', async () => {
 
   await page.getByRole('button', {name: 'Continuar'}).click();
   await page.getByRole('button', {name: 'Continuar'}).click();
+  for (const viewport of [{width: 1000, height: 720}, {width: 1280, height: 720}, {width: 1440, height: 900}]) {
+    await page.setViewportSize(viewport);
+    const area = await page.locator('.canvas-wrap').boundingBox();
+    const surface = await page.locator('canvas').boundingBox();
+    expect(Math.abs(surface!.width - (area!.width - 2))).toBeLessThan(1);
+    expect(Math.abs(surface!.height - (area!.height - 2))).toBeLessThan(1);
+    expect(surface!.width / surface!.height).toBeCloseTo(1000 / 620, 2);
+  }
+  await page.setViewportSize({width: 1280, height: 720});
+  await page.locator('canvas').scrollIntoViewIfNeeded();
+  const sketchBox = await page.locator('canvas').boundingBox();
+  await page.mouse.move(sketchBox!.x + 40, sketchBox!.y + 40);
+  await page.mouse.down();
+  await page.mouse.move(sketchBox!.x + sketchBox!.width + 20, sketchBox!.y + sketchBox!.height + 20);
+  const sketchSaved = page.waitForResponse(res => res.url().endsWith('/record') && res.request().method() === 'PUT');
+  await page.mouse.up();
+  expect((await sketchSaved).status()).toBe(200);
   await page.getByRole('button', {name: 'Continuar'}).click();
   await expect(page.getByRole('heading', {name: 'Revisão'})).toBeVisible();
   await page.getByRole('button', {name: 'Finalizar registro'}).click();

@@ -1,5 +1,9 @@
 # Sistema visual do protótipo
 
+## Phase 5 distribution baseline (2026-10-01)
+
+The historical visual reference below remains the baseline. Phase 5 packages the existing Go-backed interface; it does not redesign the application. Windows packaged-browser checks and their exact limits are recorded in `docs/VERIFICACAO.md`. Linux runtime and native browser printing require separate platform evidence.
+
 Referência: conceito gerado em `conceito.png`, pela ferramenta de geração de imagens integrada. O conceito é uma proposta desta etapa, não uma aprovação visual já recebida do usuário.
 
 ## Direção
